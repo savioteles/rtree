@@ -47,10 +47,10 @@ public class IndexObject
         setParams(envelopeOriginal, geometry);
     }
 
-    public IndexObject(Geometry geometry) {
+    public IndexObject(String key, Geometry geometry) {
         this.geometry = geometry;
         String geomKey = JtsFactories.getGeomKey(geometry);
-        setParams(null, JtsFactories.serialize(geometry), null, geomKey);
+        setParams(null, JtsFactories.serialize(geometry), key, geomKey);
     }
 
     @Override

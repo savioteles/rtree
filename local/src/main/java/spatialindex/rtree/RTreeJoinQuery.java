@@ -1,20 +1,25 @@
 package spatialindex.rtree;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import spatialindex.rtree.JoinPredicateAnalyzer.JoinAnalyzerObject;
-import utils.HarpiaList;
 
 public class RTreeJoinQuery {
 
+	public static class JoinResultPair {
+        public String left;
+        public String right;
+		public JoinResultPair(String left, String right) {
+			this.left = left;
+			this.right = right;
+		}
+    }
+	
     public static class JoinEntryDataPar {
         public RTreeIEntryData left;
         public RTreeIEntryData right;
@@ -49,10 +54,10 @@ public class RTreeJoinQuery {
 
         private RTreeINode nr;
         private RTreeINode nl;
-        private Map<String, Map<String, HarpiaList>> result;
+        private List<JoinResultPair> result;
 
         public JoinThread(RTreeINode nr, RTreeINode nl,
-                Map<String, Map<String, HarpiaList>> result) {
+                List<JoinResultPair> result) {
             this.nr = nr;
             this.nl = nl;
             this.result = result;
@@ -69,8 +74,9 @@ public class RTreeJoinQuery {
                     RTreeIEntryData entryNL = (RTreeIEntryData) nl
                             .getEntries().get(k);
 
-                    if (entryNL.getBoundingBox().intersects(
-                            entryNR.getBoundingBox())) {
+                    if (entryNL.getPolygon().intersects(
+                            entryNR.getPolygon())) {
+                    	
                         JoinAnalyzerObject keys = JoinPredicateAnalyzer
                                 .getChildKey(entryNL.getCopyKeys(),
                                         entryNL.getChild(),
@@ -78,7 +84,7 @@ public class RTreeJoinQuery {
                                         entryNR.getShadowGeoms(),
                                         entryNR.getChild());
 
-                        fillMap(keys, result);
+                        fillResult(keys, result);
                     }
 
                 }
@@ -211,11 +217,11 @@ public class RTreeJoinQuery {
      *         duas entradas de n�s-folhas de duas R-trees diferentes que
      *         apresentam intersec��o.
      */
-    private Map<String, Map<String, HarpiaList>> compareEntryDatasAndNode(
+    private List<JoinResultPair> compareEntryDatasAndNode(
             List<RTreeIEntry> entries, List<RTreeINode> nIntern,
             boolean isLeftEmpty) {
 
-        Map<String, Map<String, HarpiaList>> result = new ConcurrentHashMap<String, Map<String, HarpiaList>>();
+        List<JoinResultPair> result = new ArrayList<RTreeJoinQuery.JoinResultPair>();
 
         for (int i = 0; i < entries.size(); i++) {
             RTreeINode node = nIntern.get(i);
@@ -238,7 +244,7 @@ public class RTreeJoinQuery {
                                 entry.getCopyKeys(), entry.getShadowGeoms(),
                                 entry.getChild());
 
-                    fillMap(keys, result);
+                    fillResult(keys, result);
                 }
             }
         }
@@ -260,10 +266,10 @@ public class RTreeJoinQuery {
      * @return uma lista de objetos {@link JoinEntryDataPar} contendo um par de
      *         entradas que apresentam intersec��o em seus poligonos.
      */
-    private Map<String, Map<String, HarpiaList>> compareNodeLeaf(
+    private  List<JoinResultPair> compareNodeLeaf(
             List<RTreeINode> nleft, List<RTreeINode> nright) {
 
-        Map<String, Map<String, HarpiaList>> result = new ConcurrentHashMap<String, Map<String, HarpiaList>>();
+        List<JoinResultPair> result = new ArrayList<RTreeJoinQuery.JoinResultPair>();
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(4, 8,
                 10,
                 TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
@@ -273,31 +279,6 @@ public class RTreeJoinQuery {
                 RTreeINode nl = nleft.get(i);
                 RTreeINode nr = nright.get(i);
                 threadPoolExecutor.execute(new JoinThread(nr, nl, result));
-
-                // for (int j = 0; j < nr.getEntries().size(); j++) {
-                // RTreeIEntryData entryNR = (RTreeIEntryData) nr.getEntries()
-                // .get(j);
-                //
-                // for (int k = 0; k < nl.getEntries().size(); k++) {
-                //
-                // RTreeIEntryData entryNL = (RTreeIEntryData) nl
-                // .getEntries().get(k);
-                //
-                // if (entryNL.getBoundingBox().intersects(
-                // entryNR.getBoundingBox())) {
-                // JoinAnalyzerObject keys = JoinPredicateAnalyzer
-                // .getChildKey(entryNL.getCopyKeys(),
-                // entryNL.getChild(),
-                // entryNR.getCopyKeys(),
-                // entryNR.getShadowGeoms(),
-                // entryNR.getChild());
-                //
-                // fillMap(keys, result);
-                // }
-                //
-                // }
-                // }
-
             }
 
         threadPoolExecutor.shutdown();
@@ -368,31 +349,14 @@ public class RTreeJoinQuery {
         return result;
     }
 
-    private void fillMap(JoinAnalyzerObject keys,
-            Map<String, Map<String, HarpiaList>> result) {
+    private void fillResult(JoinAnalyzerObject keys,
+            List<JoinResultPair> result) {
         // obtem as chaves de r e s.
         String rChild = keys.getrChild();
         String sChild = keys.getsChild();
 
         synchronized (this) {
-            String rServer = "local";
-			Map<String, HarpiaList> rMap = result.get(rServer);
-
-            if (rMap == null) {
-                rMap = new HashMap<String, HarpiaList>();
-                result.put(rServer, rMap);
-            }
-
-            HarpiaList rList = rMap.get(rChild);
-
-            if (rList == null) {
-                rList = new HarpiaList();
-                rMap.put(rChild, rList);
-            }
-
-            String sChildInfo = keys.getsChildInfo() != null
-                    ? (String) keys.getsChildInfo() : null;
-            rList.addItem(sChild, sChildInfo);
+        	result.add(new JoinResultPair(rChild, sChild));
         }
     }
 
@@ -409,8 +373,9 @@ public class RTreeJoinQuery {
      *         intersec��o entre si. Uma entrada � da R-Tree left e a outra da
      *         R-Tree right.
      */
-    public Map<String, Map<String, HarpiaList>> joinRtrees(RTreeIRTree left,
+    public List<JoinResultPair> joinRtrees(RTreeIRTree left,
             RTreeIRTree right) {
+    	
         List<RTreeINode> listl = new LinkedList<RTreeINode>();
         List<RTreeINode> listr = new LinkedList<RTreeINode>();
         List<RTreeIEntry> listEntries = new LinkedList<RTreeIEntry>();
@@ -503,7 +468,7 @@ public class RTreeJoinQuery {
             }
 
         // N�vel das folhas nas duas �rvores - etapa de refinamento
-        Map<String, Map<String, HarpiaList>> result = new ConcurrentHashMap<String, Map<String, HarpiaList>>();
+        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
 
         /*
          * Verifica se alguma �rvore tem altura maior que a outra. Se isso

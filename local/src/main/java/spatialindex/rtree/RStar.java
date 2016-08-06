@@ -9,7 +9,7 @@ import spatialindex.serialization.HarpiaSerializableObject;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 
-public abstract class RStar extends HarpiaSerializableObject implements RTreeIRTree {
+public class RStar extends HarpiaSerializableObject implements RTreeIRTree {
 
 	private static final long serialVersionUID = 1L;
 
@@ -103,7 +103,7 @@ public abstract class RStar extends HarpiaSerializableObject implements RTreeIRT
     public void remove(String uri, Geometry polygon)
             throws NodeIsLeafException {
         decrSize();
-        RTreeDeletion.deleteOnRtree(new RTreeEntryData(uri, polygon), this);
+        RTreeDeletion.deleteOnRtree(new RTreeEntryData(polygon.getEnvelopeInternal(), new IndexObject(uri, polygon)), this);
     }
 
     @Override

@@ -53,7 +53,7 @@ public class TypeCodec {
 
         try {
             Class<?>[] serializableClasses = DataLoaderUtils
-                    .getClassesOnPackage("harpia",
+                    .getClassesOnPackage("spatialindex",
                             AbstractSerializeObject.class);
 
             for (Class<?> clazz : serializableClasses)

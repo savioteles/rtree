@@ -27,10 +27,6 @@ public class RTreeEntryData
         setParams(bb, obj, null);
     }
 
-    public RTreeEntryData(String uri, Geometry polygon) {
-        setParams(null, null, null);
-    }
-
     @Override
     public Envelope getBoundingBox() {
         return getParam(BOUND, Envelope.class);
