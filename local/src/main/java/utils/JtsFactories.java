@@ -8,7 +8,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.StringTokenizer;
+import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.geotools.geojson.geom.GeometryJSON;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
@@ -292,5 +294,78 @@ public class JtsFactories {
     }
 
     private JtsFactories() {
+    }
+    
+    public static boolean intersects(Envelope env1, Envelope env2) {
+    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1);
+    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2);
+    	return envProb1.intersects(envProb2);
+    }
+    
+    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv){
+    	double xMin = inputEnv.getMinX();
+    	double xMax = inputEnv.getMaxX();
+    	double yMin = inputEnv.getMinY();
+    	double yMax = inputEnv.getMaxY();
+    	
+    	Coordinate min_shift_coord = shiftPoint(new Coordinate(xMin, yMin));
+    	Coordinate max_shift_coord = shiftPoint(new Coordinate(xMax, yMax));
+    	return new Envelope(min_shift_coord.x, max_shift_coord.x, min_shift_coord.y, max_shift_coord.y);
+    }
+    
+    public static boolean intersects(Geometry geom1, Geometry geom2){
+    	Geometry geom1Prob = changeGeometryPointsProbabilistic(geom1);
+    	Geometry geom2Prob = changeGeometryPointsProbabilistic(geom2);
+    	return geom1Prob.intersects(geom2Prob);
+    }
+    
+    private static Geometry changeGeometryPointsProbabilistic(Geometry input) {
+    	if(input instanceof Point)
+    		return changeGeometryPointsProbabilistic((Point)input);
+    	if(input instanceof Polygon)
+    		return changeGeometryPointsProbabilistic((Polygon)input);
+    	return changeGeometryPointsProbabilistic((MultiPolygon)input);
+    }
+    
+    private static Geometry changeGeometryPointsProbabilistic(Point input) {
+    	Coordinate shiftPoint = shiftPoint(input.getCoordinate());
+    	return gf.createPoint(shiftPoint);
+    }
+    
+    private static Geometry changeGeometryPointsProbabilistic(MultiPolygon input) {
+    	int numGeometries = input.getNumGeometries();
+    	Polygon[] polygons = new Polygon[numGeometries];
+    	
+    	for(int i = 0; i < numGeometries; i++){
+    		Polygon polygon = (Polygon) input.getGeometryN(i);
+    		polygons[i] = (Polygon) changeGeometryPointsProbabilistic(polygon);
+    	}
+    	
+    	return gf.createMultiPolygon(polygons);
+    }
+    private static Geometry changeGeometryPointsProbabilistic(Polygon input) {
+    	Coordinate[] coordinates = input.getCoordinates();
+    	Coordinate[] shiftCoordinates = new Coordinate[coordinates.length];
+    	
+    	//first and last point must be same
+    	shiftCoordinates[0] = shiftCoordinates[coordinates.length -1] = shiftPoint(coordinates[0]); 
+    	for(int i = 1; i < coordinates.length - 1; i++){
+    		Coordinate coordinate = coordinates[i];
+    		shiftCoordinates[i] = shiftPoint(coordinate);
+    	}
+    	
+    	return gf.createPolygon(shiftCoordinates).buffer(0).getGeometryN(0);
+    }
+    
+    private static Coordinate shiftPoint(Coordinate input) {
+    	double angle = ThreadLocalRandom.current().nextDouble(2 * Math.PI);
+    	
+    	NormalDistribution distribution = new NormalDistribution(0, 1);
+    	double shift = distribution.sample();
+    	
+    	double x_shift = shift * Math.cos(angle);
+    	double y_shift = shift * Math.sin(angle);
+    	
+    	return new Coordinate(input.x + x_shift, input.y + y_shift);
     }
 }

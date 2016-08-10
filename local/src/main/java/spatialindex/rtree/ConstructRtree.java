@@ -50,7 +50,7 @@ public class ConstructRtree {
         
         System.out.println("Iniciando o join...");
         time = System.currentTimeMillis();
-        List<JoinResultPair> joinRtrees = new RTreeJoinQuery().joinRtrees(vegetaRtree, desmataRtree);
+        List<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(vegetaRtree, desmataRtree);
         System.out.println("Time: " +(System.currentTimeMillis() - time) +". Size: " +joinRtrees.size());
         
         System.out.println("FINISHED");
