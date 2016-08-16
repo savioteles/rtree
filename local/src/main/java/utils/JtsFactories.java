@@ -316,14 +316,12 @@ public class JtsFactories {
     }
     
     public static boolean intersects(Geometry geom1, Geometry geom2, double meters){
-//    	Geometry geom1Prob = changeGeometryPointsProbabilistic(geom1, meters);
-//    	Geometry geom2Prob = changeGeometryPointsProbabilistic(geom2, meters);
-//    	return geom1Prob.intersects(geom2Prob);
-    	return geom1.intersects(geom2);
+    	Geometry geom1Prob = changeGeometryPointsProbabilistic(geom1, meters);
+    	Geometry geom2Prob = changeGeometryPointsProbabilistic(geom2, meters);
+    	return geom1Prob.intersects(geom2Prob);
     }
     
     public static Geometry changeGeometryPointsProbabilistic(Geometry input, double meters) {
-//    	return input;
     	if(input instanceof Point)
     		return changeGeometryPointsProbabilistic((Point)input, meters);
     	if(input instanceof Polygon)
