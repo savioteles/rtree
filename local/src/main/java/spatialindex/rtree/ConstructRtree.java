@@ -1,6 +1,8 @@
 package spatialindex.rtree;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.util.List;
 
 import org.geotools.data.FeatureReader;
@@ -12,8 +14,10 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.FeatureType;
 
 import spatialindex.rtree.RTreeJoinQuery.JoinResultPair;
+import utils.JtsFactories;
 
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Polygon;
 
 public class ConstructRtree {
 
@@ -28,8 +32,14 @@ public class ConstructRtree {
 		
         while(reader.hasNext()) {
         	Feature feature = reader.next();
+        	
 			Geometry geom = getGeomOfFeature(feature,
                     featureType);
+			geom = JtsFactories.changeGeometryPointsProbabilistic(geom, 50);
+			if(!geom.isValid()) {
+				geom = geom.convexHull();
+				geom = JtsFactories.changeGeometryPointsProbabilistic(geom, 50);
+			}
 			RTreeInsertion.insertTree(vegetaRoot, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(feature.getIdentifier().getID().split("\\.")[1], geom)), null, vegetaRtree);
         }
         
@@ -43,6 +53,11 @@ public class ConstructRtree {
         	Feature feature = reader.next();
 			Geometry geom = getGeomOfFeature(feature,
                     featureType);
+			geom = JtsFactories.changeGeometryPointsProbabilistic(geom, 50);
+			if(!geom.isValid()) {
+				geom = geom.convexHull();
+				geom = JtsFactories.changeGeometryPointsProbabilistic(geom, 50);
+			} 
 			RTreeInsertion.insertTree(desmataRoot, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(feature.getIdentifier().getID().split("\\.")[1], geom)), null, desmataRtree);
         }
         
@@ -50,7 +65,7 @@ public class ConstructRtree {
         
         System.out.println("Iniciando o join...");
         time = System.currentTimeMillis();
-        List<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(vegetaRtree, desmataRtree);
+        List<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(desmataRtree, vegetaRtree);
         System.out.println("Time: " +(System.currentTimeMillis() - time) +". Size: " +joinRtrees.size());
         
         System.out.println("FINISHED");

@@ -47,6 +47,8 @@ public class JtsFactories {
 
     private static PrecisionModel PRECISION_MODEL = new PrecisionModel(
             PrecisionModel.FLOATING);
+    
+    private final static double originShift = 2 * Math.PI * 6378137 / 2.0;;
 
     static {
         // WKBReader nao é thread-safe
@@ -296,76 +298,83 @@ public class JtsFactories {
     private JtsFactories() {
     }
     
-    public static boolean intersects(Envelope env1, Envelope env2) {
-    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1);
-    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2);
+    public static boolean intersects(Envelope env1, Envelope env2, double meters) {
+    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, meters);
+    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, meters);
     	return envProb1.intersects(envProb2);
     }
     
-    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv){
+    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv, double meters){
     	double xMin = inputEnv.getMinX();
     	double xMax = inputEnv.getMaxX();
     	double yMin = inputEnv.getMinY();
     	double yMax = inputEnv.getMaxY();
     	
-    	Coordinate min_shift_coord = shiftPoint(new Coordinate(xMin, yMin));
-    	Coordinate max_shift_coord = shiftPoint(new Coordinate(xMax, yMax));
+    	Coordinate min_shift_coord = shiftPoint(new Coordinate(xMin, yMin), meters);
+    	Coordinate max_shift_coord = shiftPoint(new Coordinate(xMax, yMax), meters);
     	return new Envelope(min_shift_coord.x, max_shift_coord.x, min_shift_coord.y, max_shift_coord.y);
     }
     
-    public static boolean intersects(Geometry geom1, Geometry geom2){
-    	Geometry geom1Prob = changeGeometryPointsProbabilistic(geom1);
-    	Geometry geom2Prob = changeGeometryPointsProbabilistic(geom2);
-    	return geom1Prob.intersects(geom2Prob);
+    public static boolean intersects(Geometry geom1, Geometry geom2, double meters){
+//    	Geometry geom1Prob = changeGeometryPointsProbabilistic(geom1, meters);
+//    	Geometry geom2Prob = changeGeometryPointsProbabilistic(geom2, meters);
+//    	return geom1Prob.intersects(geom2Prob);
+    	return geom1.intersects(geom2);
     }
     
-    private static Geometry changeGeometryPointsProbabilistic(Geometry input) {
+    public static Geometry changeGeometryPointsProbabilistic(Geometry input, double meters) {
+//    	return input;
     	if(input instanceof Point)
-    		return changeGeometryPointsProbabilistic((Point)input);
+    		return changeGeometryPointsProbabilistic((Point)input, meters);
     	if(input instanceof Polygon)
-    		return changeGeometryPointsProbabilistic((Polygon)input);
-    	return changeGeometryPointsProbabilistic((MultiPolygon)input);
+    		return changeGeometryPointsProbabilistic((Polygon)input, meters);
+    	return changeGeometryPointsProbabilistic((MultiPolygon)input, meters);
     }
     
-    private static Geometry changeGeometryPointsProbabilistic(Point input) {
-    	Coordinate shiftPoint = shiftPoint(input.getCoordinate());
+    private static Geometry changeGeometryPointsProbabilistic(Point input, double meters) {
+    	Coordinate shiftPoint = shiftPoint(input.getCoordinate(), meters);
     	return gf.createPoint(shiftPoint);
     }
     
-    private static Geometry changeGeometryPointsProbabilistic(MultiPolygon input) {
+    private static Geometry changeGeometryPointsProbabilistic(MultiPolygon input, double meters) {
     	int numGeometries = input.getNumGeometries();
     	Polygon[] polygons = new Polygon[numGeometries];
     	
     	for(int i = 0; i < numGeometries; i++){
     		Polygon polygon = (Polygon) input.getGeometryN(i);
-    		polygons[i] = (Polygon) changeGeometryPointsProbabilistic(polygon);
+    		polygons[i] = (Polygon) changeGeometryPointsProbabilistic(polygon, meters);
     	}
     	
     	return gf.createMultiPolygon(polygons);
     }
-    private static Geometry changeGeometryPointsProbabilistic(Polygon input) {
+    public static Geometry changeGeometryPointsProbabilistic(Polygon input, double meters) {
     	Coordinate[] coordinates = input.getCoordinates();
     	Coordinate[] shiftCoordinates = new Coordinate[coordinates.length];
     	
     	//first and last point must be same
-    	shiftCoordinates[0] = shiftCoordinates[coordinates.length -1] = shiftPoint(coordinates[0]); 
+    	shiftCoordinates[0] = shiftCoordinates[coordinates.length -1] = shiftPoint(coordinates[0], meters); 
     	for(int i = 1; i < coordinates.length - 1; i++){
     		Coordinate coordinate = coordinates[i];
-    		shiftCoordinates[i] = shiftPoint(coordinate);
+    		shiftCoordinates[i] = shiftPoint(coordinate, meters);
     	}
     	
-    	return gf.createPolygon(shiftCoordinates).buffer(0).getGeometryN(0);
+    	return gf.createPolygon(shiftCoordinates);
     }
     
-    private static Coordinate shiftPoint(Coordinate input) {
+    private static Coordinate shiftPoint(Coordinate input, double meters) {
     	double angle = ThreadLocalRandom.current().nextDouble(2 * Math.PI);
     	
-    	NormalDistribution distribution = new NormalDistribution(0, 1);
+    	NormalDistribution distribution = new NormalDistribution(0, metersToDegrees(meters));
     	double shift = distribution.sample();
-    	
+
     	double x_shift = shift * Math.cos(angle);
     	double y_shift = shift * Math.sin(angle);
     	
     	return new Coordinate(input.x + x_shift, input.y + y_shift);
+    }
+    
+    public static double metersToDegrees(double meters) {
+
+        return (meters / originShift) * 180.0;
     }
 }
