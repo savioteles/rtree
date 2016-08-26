@@ -17,34 +17,37 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.FeatureType;
 
 import utils.JtsFactories;
+import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
 
 public class BuildProbabilisticPolygons {
 
-	private static ThreadPoolExecutor pool = new ThreadPoolExecutor(8, 12, 1, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
-	private static final int NUM_POLYGONS = 1000;
+    private static int numThreads = PropertiesReader.getInstance().getNumSystemThreads();
+	private static ThreadPoolExecutor pool = new ThreadPoolExecutor(numThreads, numThreads * 2, 1, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
+	private static final int NUM_POLYGONS = PropertiesReader.getInstance().getNumCacheGeometries();
+	private static final int errorInMeters = PropertiesReader.getInstance().getErrorInMeters();
 
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception {
 		long time = System.currentTimeMillis();
 		ShapefileDataStore shp = new ShapefileDataStore(
 				new File(
-						"/media/savio/Dados/Shapes/LAPIG/Paises/pa_br_vegetacao_71.shp")
+						PropertiesReader.getInstance().getLayer1Path())
 						.toURL());
-//		write(shp,
-//				"/media/savio/Dados/Faculdade/Artigos/Geoinfo_2016 Welder/polygons/vegeta");
-//		System.out.println("Time to construct vegeta polygons: "
-//				+ (System.currentTimeMillis() - time));
+		write(shp,
+		        PropertiesReader.getInstance().getCacheGeometrieslayer1Path());
+		System.out.println("Time to construct layer 1 polygons: "
+				+ (System.currentTimeMillis() - time));
 
 		time = System.currentTimeMillis();
 		shp = new ShapefileDataStore(
 				new File(
-						"/media/savio/Dados/Shapes/LAPIG/Biomas/bi_ce_alertas_desmatamento_1.shp")
+				        PropertiesReader.getInstance().getLayer2Path())
 						.toURL());
 		write(shp,
-				"/media/savio/Dados/Faculdade/Artigos/Geoinfo_2016 Welder/polygons/desmata");
-		System.out.println("Time to construct desmata polygons: "
+		        PropertiesReader.getInstance().getCacheGeometrieslayer2Path());
+		System.out.println("Time to construct layer 2 polygons: "
 				+ (System.currentTimeMillis() - time));
 
 	}
@@ -82,17 +85,21 @@ public class BuildProbabilisticPolygons {
 		public void run() {
 			try {
 				String id = feature.getIdentifier().getID().split("\\.")[1];
-				BufferedWriter bw = new BufferedWriter(new FileWriter(outPath
-						+ "/" + id));
+				File dir = new File(outPath);
+				if(!dir.exists())
+				    dir.mkdirs();
+				
+                BufferedWriter bw = new BufferedWriter(new FileWriter(outPath
+                        + "/" + id));
 				Geometry originalGeom = getGeomOfFeature(feature, featureType);
 
 				for (int i = 0; i < NUM_POLYGONS; i++) {
 					Geometry geom = JtsFactories
-							.changeGeometryPointsProbabilistic(originalGeom, 50);
+							.changeGeometryPointsProbabilistic(originalGeom, errorInMeters);
 					if (!geom.isValid()) {
 						geom = originalGeom.convexHull();
 						geom = JtsFactories.changeGeometryPointsProbabilistic(
-								geom, 50);
+								geom, errorInMeters);
 					}
 
 					bw.write(geom.toString() + "\n");

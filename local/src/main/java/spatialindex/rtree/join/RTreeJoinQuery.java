@@ -1,4 +1,4 @@
-package spatialindex.rtree;
+package spatialindex.rtree.join;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -7,17 +7,31 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import spatialindex.rtree.JoinPredicateAnalyzer.JoinAnalyzerObject;
+import spatialindex.rtree.RTreeIEntry;
+import spatialindex.rtree.RTreeIEntryData;
+import spatialindex.rtree.RTreeIEntryDir;
+import spatialindex.rtree.RTreeINode;
+import spatialindex.rtree.RTreeIRTree;
+import spatialindex.rtree.join.JoinPredicateAnalyzer.JoinAnalyzerObject;
 
-public class ProbabilisticJoinQuery {
+public class RTreeJoinQuery {
 
 	public static class JoinResultPair {
         public String left;
         public String right;
+        public int false_intersections;
+        public int true_intersections;
 		public JoinResultPair(String left, String right) {
 			this.left = left;
 			this.right = right;
 		}
+        public JoinResultPair(String left, String right,
+                int false_intersections, int true_intersections) {
+            this.left = left;
+            this.right = right;
+            this.false_intersections = false_intersections;
+            this.true_intersections = true_intersections;
+        }
     }
 	
     public static class JoinEntryDataPar {
@@ -110,7 +124,7 @@ public class ProbabilisticJoinQuery {
             List<RTreeINode> nright, RTreeIRTree rtreeLeft,
             RTreeIRTree rtreeRight) {
 
-        List<JoinNodePar> joinList = new ArrayList<ProbabilisticJoinQuery.JoinNodePar>();
+        List<JoinNodePar> joinList = new ArrayList<RTreeJoinQuery.JoinNodePar>();
 
         if (nleft.size() == nright.size())
             for (int i = 0; i < nright.size(); i++) {
@@ -221,7 +235,7 @@ public class ProbabilisticJoinQuery {
             List<RTreeIEntry> entries, List<RTreeINode> nIntern,
             boolean isLeftEmpty) {
 
-        List<JoinResultPair> result = new ArrayList<ProbabilisticJoinQuery.JoinResultPair>();
+        List<JoinResultPair> result = new ArrayList<RTreeJoinQuery.JoinResultPair>();
 
         for (int i = 0; i < entries.size(); i++) {
             RTreeINode node = nIntern.get(i);
@@ -269,7 +283,7 @@ public class ProbabilisticJoinQuery {
     private  List<JoinResultPair> compareNodeLeaf(
             List<RTreeINode> nleft, List<RTreeINode> nright) {
 
-        List<JoinResultPair> result = new ArrayList<ProbabilisticJoinQuery.JoinResultPair>();
+        List<JoinResultPair> result = new ArrayList<RTreeJoinQuery.JoinResultPair>();
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(4, 8,
                 10,
                 TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());

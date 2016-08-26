@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.commons.math3.distribution.AbstractRealDistribution;
+import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.geotools.geojson.geom.GeometryJSON;
 import org.geotools.geometry.jts.JTS;
@@ -359,11 +361,28 @@ public class JtsFactories {
     	return gf.createPolygon(shiftCoordinates);
     }
     
+    private static double getDistributionSample(double meters) {
+        Distribution distributionType = PropertiesReader.getInstance().getDistribution();
+        switch (distributionType) {
+        case normal:
+            distribution = new NormalDistribution(0, metersToDegrees(meters));
+            return distribution.sample();
+        case exponencial:
+            distribution = new ExponentialDistribution(metersToDegrees(meters));
+            return distribution.sample();
+        case chisquared:
+            distribution = new NormalDistribution(Math.sqrt(metersToDegrees(meters)), metersToDegrees(1));
+            return Math.pow(distribution.sample(), 2);
+        default:
+            return 0;
+        }
+    }
+    
+    private static AbstractRealDistribution distribution;
     private static Coordinate shiftPoint(Coordinate input, double meters) {
     	double angle = ThreadLocalRandom.current().nextDouble(2 * Math.PI);
     	
-    	NormalDistribution distribution = new NormalDistribution(0, metersToDegrees(meters));
-    	double shift = distribution.sample();
+    	double shift = getDistributionSample(meters);
 
     	double x_shift = shift * Math.cos(angle);
     	double y_shift = shift * Math.sin(angle);
@@ -374,5 +393,9 @@ public class JtsFactories {
     public static double metersToDegrees(double meters) {
 
         return (meters / originShift) * 180.0;
+    }
+    
+    public enum Distribution {
+        normal, chisquared, exponencial
     }
 }

@@ -1,4 +1,4 @@
-package spatialindex.rtree;
+package spatialindex.rtree.join;
 
 import java.util.Map;
 

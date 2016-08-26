@@ -1,4 +1,4 @@
-package spatialindex.rtree;
+package spatialindex.rtree.join;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -7,16 +7,53 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import spatialindex.rtree.JoinPredicateAnalyzer.JoinAnalyzerObject;
-import spatialindex.rtree.RTreeJoinQuery.JoinEntryDataPar;
-import spatialindex.rtree.RTreeJoinQuery.JoinEntryNodePar;
-import spatialindex.rtree.RTreeJoinQuery.JoinNodePar;
-import spatialindex.rtree.RTreeJoinQuery.JoinResultPair;
-import utils.JtsFactories;
+import spatialindex.rtree.RTreeIEntry;
+import spatialindex.rtree.RTreeIEntryData;
+import spatialindex.rtree.RTreeIEntryDir;
+import spatialindex.rtree.RTreeINode;
+import spatialindex.rtree.RTreeIRTree;
+import spatialindex.rtree.join.JoinPredicateAnalyzer.JoinAnalyzerObject;
 
-public class RSJoinQuery {
+public class ProbabilisticJoinQuery {
+
+	public static class JoinResultPair {
+        public String left;
+        public String right;
+		public JoinResultPair(String left, String right) {
+			this.left = left;
+			this.right = right;
+		}
+    }
 	
-	private static double errorMeters = 50;
+    public static class JoinEntryDataPar {
+        public RTreeIEntryData left;
+        public RTreeIEntryData right;
+
+        public JoinEntryDataPar(RTreeIEntryData left, RTreeIEntryData right) {
+            this.left = left;
+            this.right = right;
+        }
+    }
+
+    public static class JoinEntryNodePar {
+        public RTreeIEntry entry;
+        public RTreeINode node;
+
+        public JoinEntryNodePar(RTreeIEntry entry, RTreeINode node) {
+            this.entry = entry;
+            this.node = node;
+        }
+    }
+
+    public static class JoinNodePar {
+        public RTreeINode left;
+        public RTreeINode right;
+
+        public JoinNodePar(RTreeINode left, RTreeINode right) {
+            this.left = left;
+            this.right = right;
+        }
+    }
 
     private class JoinThread implements Runnable {
 
@@ -42,9 +79,9 @@ public class RSJoinQuery {
                     RTreeIEntryData entryNL = (RTreeIEntryData) nl
                             .getEntries().get(k);
 
-                    
-                    if (JtsFactories.intersects(entryNL.getPolygon(),
-                            entryNR.getPolygon(), errorMeters)) {
+                    if (entryNL.getPolygon().intersects(
+                            entryNR.getPolygon())) {
+                    	
                         JoinAnalyzerObject keys = JoinPredicateAnalyzer
                                 .getChildKey(entryNL.getCopyKeys(),
                                         entryNL.getChild(),
@@ -78,38 +115,41 @@ public class RSJoinQuery {
             List<RTreeINode> nright, RTreeIRTree rtreeLeft,
             RTreeIRTree rtreeRight) {
 
-        List<JoinNodePar> joinList = new ArrayList<JoinNodePar>();
+        List<JoinNodePar> joinList = new ArrayList<ProbabilisticJoinQuery.JoinNodePar>();
 
         if (nleft.size() == nright.size())
             for (int i = 0; i < nright.size(); i++) {
                 RTreeINode nl = nleft.get(i);
                 RTreeINode nr = nright.get(i);
 
-                /*
-                 * Para cada entry l, r do n� a direita/esquerda -> Se
-                 * l.boundbox.intersects(r.boundbox) n.add(new
-                 * JoinNodePar(child_i_nl, child_i_nr));
-                 */
-                for (int j = 0; j < nr.getEntries().size(); j++) {
-                    RTreeIEntryDir entryNR = (RTreeIEntryDir) nr
-                            .getEntries().get(j);
+                if (nl.getBoundingBox().intersects(nr.getBoundingBox()))
+                    /*
+                     * Para cada entry l, r do n� a direita/esquerda -> Se
+                     * l.boundbox.intersects(r.boundbox) n.add(new
+                     * JoinNodePar(child_i_nl, child_i_nr));
+                     */
+                    for (int j = 0; j < nr.getEntries().size(); j++) {
+                        RTreeIEntryDir entryNR = (RTreeIEntryDir) nr
+                                .getEntries().get(j);
 
-                    for (int k = 0; k < nl.getEntries().size(); k++) {
+                        for (int k = 0; k < nl.getEntries().size(); k++) {
 
-                        RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
-                                .getEntries().get(k);
+                            RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
+                                    .getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters)   
-                                ) {
-                            RTreeIEntryDir aux = entryNL;
-                            joinList.add(new JoinNodePar(
-                                    rtreeLeft.getNode(aux.getChild()),
-                                    rtreeRight
-                                            .getNode(entryNR.getChild())));
+                            if (entryNL.getBoundingBox()
+                                    .intersects(entryNR.getBoundingBox())) {
+                                RTreeIEntryDir aux = entryNL;
+                                joinList.add(new JoinNodePar(
+                                        rtreeLeft.getNode(aux.getChild()),
+                                        rtreeRight
+                                                .getNode(entryNR.getChild())));
+                            }
+
                         }
-
                     }
-                }
+                else
+                    System.out.println("Erro compareDepthNodes");
             }
         else
             // TODO Lan�ar exce��o. As duas listas devem ter o mesmo tamanho.
@@ -148,16 +188,21 @@ public class RSJoinQuery {
             RTreeINode node = nIntern.get(i);
             RTreeIEntry entry = entries.get(i);
 
-            for (int j = 0; j < node.getEntries().size(); j++) {
+            if (node.getBoundingBox().intersects(entry.getBoundingBox()))
+                for (int j = 0; j < node.getEntries().size(); j++) {
 
-                RTreeIEntryDir entryNode = (RTreeIEntryDir) node
-                        .getEntry(j);
+                    RTreeIEntryDir entryNode = (RTreeIEntryDir) node
+                            .getEntry(j);
 
-                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters))
-                    result.add(new JoinEntryNodePar(entry,
-                            rtree.getNode(entryNode.getChild())));
+                    if (entry.getBoundingBox()
+                            .intersects(entryNode.getBoundingBox()))
+                        result.add(new JoinEntryNodePar(entry,
+                                rtree.getNode(entryNode.getChild())));
 
-            }
+                }
+            else
+                System.out.println("Erro compareEntryAndNode");
+
         }
 
         return result;
@@ -181,7 +226,7 @@ public class RSJoinQuery {
             List<RTreeIEntry> entries, List<RTreeINode> nIntern,
             boolean isLeftEmpty) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        List<JoinResultPair> result = new ArrayList<ProbabilisticJoinQuery.JoinResultPair>();
 
         for (int i = 0; i < entries.size(); i++) {
             RTreeINode node = nIntern.get(i);
@@ -190,8 +235,8 @@ public class RSJoinQuery {
             for (int j = 0; j < node.getEntries().size(); j++) {
                 RTreeIEntryData entryNode = (RTreeIEntryData) node.getEntry(j);
                 JoinAnalyzerObject keys = null;
-                if (JtsFactories.intersects(entry.getBoundingBox()
-                        ,entryNode.getBoundingBox(), errorMeters)) {
+                if (entry.getBoundingBox()
+                        .intersects(entryNode.getBoundingBox())) {
                     if (isLeftEmpty)
                         keys = JoinPredicateAnalyzer.getChildKey(
                                 entry.getCopyKeys(), entry.getChild(),
@@ -229,8 +274,8 @@ public class RSJoinQuery {
     private  List<JoinResultPair> compareNodeLeaf(
             List<RTreeINode> nleft, List<RTreeINode> nright) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
-        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(8, 12,
+        List<JoinResultPair> result = new ArrayList<ProbabilisticJoinQuery.JoinResultPair>();
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(4, 8,
                 10,
                 TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
@@ -276,29 +321,32 @@ public class RSJoinQuery {
                 RTreeINode nl = nLeaf.get(i);
                 RTreeINode ni = nIntern.get(i);
 
-                /*
-                 * Para cada entry l, r do n� a direita/esquerda -> Se
-                 * l.boundbox.intersects(r.boundbox) n.add(new
-                 * JoinNodePar(child_i_nl, child_i_nr));
-                 */
-                for (int j = 0; j < ni.getEntries().size(); j++) {
-                    RTreeIEntryDir entryNR = (RTreeIEntryDir) ni
-                            .getEntries().get(j);
+                if (nl.getBoundingBox().intersects(ni.getBoundingBox()))
+                    /*
+                     * Para cada entry l, r do n� a direita/esquerda -> Se
+                     * l.boundbox.intersects(r.boundbox) n.add(new
+                     * JoinNodePar(child_i_nl, child_i_nr));
+                     */
+                    for (int j = 0; j < ni.getEntries().size(); j++) {
+                        RTreeIEntryDir entryNR = (RTreeIEntryDir) ni
+                                .getEntries().get(j);
 
-                    for (int k = 0; k < nl.getEntries().size(); k++) {
+                        for (int k = 0; k < nl.getEntries().size(); k++) {
 
-                        RTreeIEntry entryNL = nl.getEntries().get(k);
+                            RTreeIEntry entryNL = nl.getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(),
-                                entryNR.getBoundingBox(), errorMeters))
-                            result.add(
-                                    new JoinEntryNodePar(entryNL,
-                                            rtreeRight
-                                                    .getNode(entryNR
-                                                            .getChild())));
+                            if (entryNL.getBoundingBox()
+                                    .intersects(entryNR.getBoundingBox()))
+                                result.add(
+                                        new JoinEntryNodePar(entryNL,
+                                                rtreeRight
+                                                        .getNode(entryNR
+                                                                .getChild())));
 
+                        }
                     }
-                }
+                else
+                    System.out.println("Erro compareUnbalancedTreeNode");
             }
         else
             // TODO Lan�ar exce��o. As duas listas devem ter o mesmo tamanho.
