@@ -21,9 +21,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 
 public class GroundTruthJoin {
-    public List<JoinResultPair> runJoin( ShapefileDataStore shpLayer1,  ShapefileDataStore shpLayer2) throws IllegalArgumentException, NoSuchElementException, IOException, ParseException {
-        int numCacheGeometries = PropertiesReader.getInstance().getNumCacheGeometries();
-        
+    public List<JoinResultPair> runJoin( ShapefileDataStore shpLayer1,  ShapefileDataStore shpLayer2, int numCacheGeometries) throws IllegalArgumentException, NoSuchElementException, IOException, ParseException {
         long time = System.currentTimeMillis();
         FeatureReader<SimpleFeatureType,SimpleFeature> readerLayer2 = shpLayer2.getFeatureReader();
         List<Feature> layer2Features = new ArrayList<Feature>();
@@ -80,9 +78,10 @@ public class GroundTruthJoin {
                 for(Feature featureLayer2: layer2Features) {
                     String layer2Id = featureLayer2.getIdentifier().getID().split("\\.")[1];
                     List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(layer2Id, numCacheGeometries);
+                    int total = desmataPolygons.size();
                     int intersections = intersectsGeometries(desmataPolygons, vegetaPolygons);
                     if(intersections > 0) {
-                        result.add(new JoinResultPair(layer1Id, layer2Id));
+                        result.add(new JoinResultPair(layer1Id, layer2Id, total - intersections, intersections));
                     }
                 }
             } catch (Exception e) {
@@ -92,11 +91,11 @@ public class GroundTruthJoin {
         
         private int intersectsGeometries(List<Geometry> layer1Geometries, List<Geometry> layer2Geometries) {
             int intersections = 0;
-            for(Geometry geom1: layer1Geometries) {
-                for(Geometry geom2: layer2Geometries) {
-                    if(geom1.intersects(geom2)) 
-                        intersections++;
-                }
+            for(int i = 0; i < layer1Geometries.size(); i++) {
+                Geometry geom1 = layer1Geometries.get(i);
+                Geometry geom2 = layer2Geometries.get(i);
+                if(geom1.intersects(geom2)) 
+                    intersections++;
             }
             
             return intersections;

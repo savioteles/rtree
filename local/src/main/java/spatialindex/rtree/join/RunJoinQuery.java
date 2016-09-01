@@ -71,13 +71,18 @@ public class RunJoinQuery {
     private static void runGroundTruthJoin() throws IllegalArgumentException, NoSuchElementException, IOException, ParseException {
         String filePathLayer1 = properties.getLayer1Path();
         String filePathLayer2 = properties.getLayer2Path();
+        int numCacheGeometries = PropertiesReader.getInstance().getNumCacheGeometries();
         
         long time = System.currentTimeMillis();
         ShapefileDataStore shpLayer1 = new ShapefileDataStore(new File(filePathLayer1).toURL());
         ShapefileDataStore shpLayer2 = new ShapefileDataStore(new File(filePathLayer2).toURL());
-        List<JoinResultPair> runJoin = new GroundTruthJoin().runJoin(shpLayer1, shpLayer2);
+        List<JoinResultPair> joinRtrees = new GroundTruthJoin().runJoin(shpLayer1, shpLayer2, numCacheGeometries);
         
-        System.out.println("Tempo Ground Truth: " +(System.currentTimeMillis() - time) +"\t" +runJoin.size());
+        String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
+                +"_ground_truth_" +numCacheGeometries +".txt";
+        writeResult(joinRtrees, joinResultEntriesFilePath);
+        
+        System.out.println("Tempo Ground Truth: " +(System.currentTimeMillis() - time) +"\t" +joinRtrees.size());
 	}
 	
 	
