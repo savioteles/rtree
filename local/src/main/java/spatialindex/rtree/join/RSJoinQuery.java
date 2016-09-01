@@ -63,9 +63,6 @@ public class RSJoinQuery {
                             }
                         }
                         
-                        if(intersections > 0 && intersections < 5) {
-                            System.out.println();
-                        }
                         if(intersections > 0)
                             result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), iterations - intersections, intersections));
                     }

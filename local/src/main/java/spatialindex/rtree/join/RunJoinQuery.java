@@ -92,7 +92,7 @@ public class RunJoinQuery {
         int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
         for(int numJoinIteration: numJoinIterations) {
             String joinResultTimeFilePath = properties.getResultJoinFilePath()
-                    +"_maxit" +numJoinIteration +"_time.txt" ;
+                    +"_rsjoin_maxit" +numJoinIteration +"_time.txt" ;
             BufferedWriter bw = new BufferedWriter(new FileWriter(joinResultTimeFilePath));
             
             long totalTime = 0;
@@ -110,7 +110,7 @@ public class RunJoinQuery {
             bw.close();
             
             String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
-                    +"_maxit" +numJoinIteration +".txt" ;
+                    +"_rsjoin_maxit" +numJoinIteration +".txt" ;
             writeResult(joinRtrees, joinResultEntriesFilePath);
         }
     }
