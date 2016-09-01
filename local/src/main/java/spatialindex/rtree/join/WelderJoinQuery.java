@@ -1,8 +1,10 @@
 package spatialindex.rtree.join;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -17,16 +19,22 @@ import spatialindex.rtree.join.RTreeJoinQuery.JoinEntryDataPar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinEntryNodePar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinNodePar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
+import utils.JtsFactories;
 import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
 
-public class RSCachedJoinQuery {
+public class WelderJoinQuery {
 	
-	private int iterations;
-	
-    public RSCachedJoinQuery(int iterations) {
-        this.iterations = iterations;
+	private static final double errorMeters = PropertiesReader.getInstance().getErrorInMeters();
+	private int maxIterations;
+	private double gamma;
+	private static int numIterationsByStep = PropertiesReader.getInstance().getNumJoinIterationsByStep();
+	private static Map<Integer, Double> cacheTc = new HashMap<Integer, Double>();
+
+    public WelderJoinQuery(int maxIterations, double gamma) {
+        this.maxIterations = maxIterations;
+        this.gamma = gamma;
     }
 
     private class JoinThread implements Runnable {
@@ -48,33 +56,51 @@ public class RSCachedJoinQuery {
                 for (int j = 0; j < nl.getEntries().size(); j++) {
                     RTreeIEntryData entryNL = (RTreeIEntryData) nl.getEntries()
                             .get(j);
-                    List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getCachedDesmataPolygons(entryNL.getChild(), iterations);
                     
                     for (int k = 0; k < nr.getEntries().size(); k++) {
     
                         RTreeIEntryData entryNR = (RTreeIEntryData) nr
                                 .getEntries().get(k);
-                        List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(entryNR.getChild(), iterations);
-    
+                        
                         int intersections = 0;
-                        int total = desmataPolygons.size();
-                        for(int i = 0; i < total;i++) {
-                            Geometry nlPolygon = desmataPolygons.get(i);
-                            Geometry nrPolygon = vegetaPolygons.get(i);
-                            if(nlPolygon.intersects(nrPolygon)){
-                                intersections++;
+                        int iterations = 0;
+                        double p = PropertiesReader.getInstance().getP();
+                        double p_star = 0;
+                        while(true) {
+                            for(int i = 0; i < numIterationsByStep;i++) {
+                                iterations++;
+                                Geometry nlPolygon = ProbabilisticGeometriesService.getProbabilisticDesmataGeometry(entryNL.getPolygon(), entryNL.getChild(), i);
+                                Geometry nrPolygon = ProbabilisticGeometriesService.getProbabilisticVegetaGeometry(entryNR.getPolygon(), entryNR.getChild(), i);
+                                if(nlPolygon.intersects(nrPolygon)){
+                                    intersections++;
+                                }
                             }
+                            
+                            p_star =  (double) intersections / (double) iterations;
+                            
+                            Double tc = cacheTc.get(iterations);
+                            if(tc == null) {
+                                tc = JtsFactories.calculateTC(iterations, gamma);
+                                cacheTc.put(iterations, tc);
+                            }
+                            
+                            double marginOfError = tc * Math.sqrt(p_star * (1 - p_star) / iterations);
+                            
+                            double minConfidenceInterval = p_star - marginOfError;
+                            double maxConfidenceInterval = p_star + marginOfError;
+                            
+                            if(iterations >= maxIterations || !(p >= minConfidenceInterval && p <= maxConfidenceInterval))
+                                break;
                         }
                         
-                        if(intersections > 0)
-                            result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), total - intersections, intersections));
+                        if(p_star > p) 
+                            result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), iterations - intersections, intersections));
                     }
                 }
             }catch(Exception e) {
                 e.printStackTrace();
             }
         }
-
     }
 
 	
@@ -115,7 +141,8 @@ public class RSCachedJoinQuery {
                         RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
                                 .getEntries().get(k);
 
-                        if (entryNL.getBoundingBox().intersects(entryNR.getBoundingBox())) {
+                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters)   
+                                ) {
                             RTreeIEntryDir aux = entryNL;
                             joinList.add(new JoinNodePar(
                                     rtreeLeft.getNode(aux.getChild()),
@@ -168,7 +195,7 @@ public class RSCachedJoinQuery {
                 RTreeIEntryDir entryNode = (RTreeIEntryDir) node
                         .getEntry(j);
 
-                if(entry.getBoundingBox().intersects(entryNode.getBoundingBox()))
+                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters))
                     result.add(new JoinEntryNodePar(entry,
                             rtree.getNode(entryNode.getChild())));
 
@@ -205,7 +232,8 @@ public class RSCachedJoinQuery {
             for (int j = 0; j < node.getEntries().size(); j++) {
                 RTreeIEntryData entryNode = (RTreeIEntryData) node.getEntry(j);
                 JoinAnalyzerObject keys = null;
-                if (entry.getBoundingBox().intersects(entryNode.getBoundingBox())) {
+                if (JtsFactories.intersects(entry.getBoundingBox()
+                        ,entryNode.getBoundingBox(), errorMeters)) {
                     if (isLeftEmpty)
                         keys = JoinPredicateAnalyzer.getChildKey(
                                 entry.getCopyKeys(), entry.getChild(),
@@ -304,7 +332,8 @@ public class RSCachedJoinQuery {
 
                         RTreeIEntry entryNL = nl.getEntries().get(k);
 
-                        if (entryNL.getBoundingBox().intersects(entryNR.getBoundingBox()))
+                        if (JtsFactories.intersects(entryNL.getBoundingBox(),
+                                entryNR.getBoundingBox(), errorMeters))
                             result.add(
                                     new JoinEntryNodePar(entryNL,
                                             rtreeRight

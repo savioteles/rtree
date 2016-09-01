@@ -1,6 +1,8 @@
 package utils;
 
 import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import utils.JtsFactories.Distribution;
@@ -45,10 +47,14 @@ public class PropertiesReader {
     private String layer2Name;
     private int layer2Capacity;
     
-    private int numJoinIterations;
+    private List<Integer> numJoinIterations = new ArrayList<Integer>();
     private String resultJoinFilePath;
     private String joinResultTimeFilePath;
     private int numJoinExecutions;
+    private int numJoinIterationsByStep;
+    
+    private List<Double> gammaValues = new ArrayList<Double>();
+    private double p;
     
     protected PropertiesReader() {
 
@@ -77,7 +83,10 @@ public class PropertiesReader {
         
         errorInMeters = Integer.parseInt(pro.getProperty("error_in_meters"));
         
-        numJoinIterations = Integer.parseInt(pro.getProperty("num_join_iteratios"));
+        String joinIterations = pro.getProperty("num_join_iteratios");
+        for(String s: joinIterations.split(",")) {
+            numJoinIterations.add(Integer.parseInt(s));
+        }
         
         layer1Name = pro.getProperty("layer1_name");
         layer1Capacity = Integer.parseInt(pro.getProperty("layer1_capacity"));
@@ -89,6 +98,14 @@ public class PropertiesReader {
         joinResultTimeFilePath = pro.getProperty("join_process_time_file_path");
         
         numJoinExecutions = Integer.parseInt(pro.getProperty("num_join_executions"));
+        numJoinIterationsByStep = Integer.parseInt(pro.getProperty("num_join_iterations_by_step"));
+        
+        String gammaStr = pro.getProperty("gamma");
+        for(String s: gammaStr.split(",")) {
+            gammaValues.add(Double.parseDouble(s));
+        }
+        
+        p = Double.parseDouble(pro.getProperty("p"));
     }
 
     public Distribution getDistribution() {
@@ -127,7 +144,7 @@ public class PropertiesReader {
         return maxCacheEntries;
     }
 
-    public int getNumJoinIterations() {
+    public List<Integer> getNumJoinIterations() {
         return numJoinIterations;
     }
 
@@ -157,5 +174,17 @@ public class PropertiesReader {
 
     public int getNumJoinExecutions() {
         return numJoinExecutions;
+    }
+
+    public int getNumJoinIterationsByStep() {
+        return numJoinIterationsByStep;
+    }
+
+    public List<Double> getGammaValues() {
+        return gammaValues;
+    }
+
+    public double getP() {
+        return p;
     }
 }

@@ -17,15 +17,17 @@ import spatialindex.rtree.join.RTreeJoinQuery.JoinEntryDataPar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinEntryNodePar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinNodePar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
-import utils.JtsFactories;
 import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
 
 public class RSJoinQuery {
 	
-	private static final double errorMeters = PropertiesReader.getInstance().getErrorInMeters();
-	private static int iterations = PropertiesReader.getInstance().getNumJoinIterations();
+	private int iterations;
+	
+    public RSJoinQuery(int iterations) {
+        this.iterations = iterations;
+    }
 
     private class JoinThread implements Runnable {
 
@@ -61,6 +63,9 @@ public class RSJoinQuery {
                             }
                         }
                         
+                        if(intersections > 0 && intersections < 5) {
+                            System.out.println();
+                        }
                         if(intersections > 0)
                             result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), iterations - intersections, intersections));
                     }
@@ -110,7 +115,7 @@ public class RSJoinQuery {
                         RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
                                 .getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters)   
+                        if (entryNL.getBoundingBox().intersects(entryNR.getBoundingBox())   
                                 ) {
                             RTreeIEntryDir aux = entryNL;
                             joinList.add(new JoinNodePar(
@@ -164,7 +169,7 @@ public class RSJoinQuery {
                 RTreeIEntryDir entryNode = (RTreeIEntryDir) node
                         .getEntry(j);
 
-                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters))
+                if(entry.getBoundingBox().intersects(entryNode.getBoundingBox()))
                     result.add(new JoinEntryNodePar(entry,
                             rtree.getNode(entryNode.getChild())));
 
@@ -201,8 +206,7 @@ public class RSJoinQuery {
             for (int j = 0; j < node.getEntries().size(); j++) {
                 RTreeIEntryData entryNode = (RTreeIEntryData) node.getEntry(j);
                 JoinAnalyzerObject keys = null;
-                if (JtsFactories.intersects(entry.getBoundingBox()
-                        ,entryNode.getBoundingBox(), errorMeters)) {
+                if (entry.getBoundingBox().intersects(entryNode.getBoundingBox())) {
                     if (isLeftEmpty)
                         keys = JoinPredicateAnalyzer.getChildKey(
                                 entry.getCopyKeys(), entry.getChild(),
@@ -301,8 +305,7 @@ public class RSJoinQuery {
 
                         RTreeIEntry entryNL = nl.getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(),
-                                entryNR.getBoundingBox(), errorMeters))
+                        if (entryNL.getBoundingBox().intersects(entryNR.getBoundingBox()))
                             result.add(
                                     new JoinEntryNodePar(entryNL,
                                             rtreeRight

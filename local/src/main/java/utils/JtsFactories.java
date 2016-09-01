@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.distribution.TDistribution;
 import org.geotools.geojson.geom.GeometryJSON;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
@@ -397,5 +398,11 @@ public class JtsFactories {
     
     public enum Distribution {
         normal, chisquared, exponencial
+    }
+    
+    public static double calculateTC(int n, double gamma) {
+        double quantileValue = (1 + gamma) / 2;
+        TDistribution tDistribution = new TDistribution(n - 1);
+        return tDistribution.inverseCumulativeProbability(quantileValue);
     }
 }
