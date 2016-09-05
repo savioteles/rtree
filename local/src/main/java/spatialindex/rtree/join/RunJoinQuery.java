@@ -92,12 +92,13 @@ public class RunJoinQuery {
 	private static void runRSJoin() throws IOException, NodeIsLeafException{
         List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
+        String distribution = PropertiesReader.getInstance().getDistribution().toString();
         for(int numJoinIteration: numJoinIterations) {
         	
         	Map<String, Integer> resultMap = null;
         	long totalTime = 0;
         	String joinResultTimeFilePath = properties.getResultJoinFilePath()
-                    +"_rsjoin_maxit" +numJoinIteration +"_time.txt" ;
+        	        +"_" +distribution +"_rsjoin_maxit" +numJoinIteration +"_time.txt" ;
             BufferedWriter bw = new BufferedWriter(new FileWriter(joinResultTimeFilePath));
         	
         	for(int i = 0; i < numJoinExecutions; i++) {
@@ -105,7 +106,7 @@ public class RunJoinQuery {
         		resultMap = new HashMap<String, Integer>();
 	            long time = System.currentTimeMillis();
 	            for(int it = 0; it < numJoinIteration; it++) {
-	                buildRtrees(true);
+	                buildRtrees(false);
 	                Queue<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(treeLayer1, treeLayer2);
 	                for(JoinResultPair result: joinRtrees) {
 	                    if(result == null)
@@ -118,8 +119,11 @@ public class RunJoinQuery {
 	                	count++;
 	                	resultMap.put(result.toString(), count);
 	                }
+	                for(JoinResultPair r: joinRtrees)
+	                    System.out.println(r);
 	            }
 	            
+	           
 	            time = System.currentTimeMillis() - time;
                 bw.write("Join " +i +": " +time +"\n");
                 totalTime += time;
@@ -131,7 +135,7 @@ public class RunJoinQuery {
             bw.close();
             
             String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
-                    +"_rsjoin_maxit" +numJoinIteration +".txt";
+                    +"_" +distribution +"_rsjoin_maxit" +numJoinIteration +".txt";
             writeResult(resultMap, numJoinIteration, joinResultEntriesFilePath);
         }
     }
@@ -142,11 +146,12 @@ public class RunJoinQuery {
 	    List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         List<Double> gammaValues = PropertiesReader.getInstance().getGammaValues();
 	    int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
+	    String distribution = PropertiesReader.getInstance().getDistribution().toString();
         for(int numJoinIteration: numJoinIterations) {
             for(double gammaValue: gammaValues) {
                 
                 String joinResultTimeFilePath = properties.getResultJoinFilePath()
-                        +"_gamma" +gammaValue +"_maxit" +numJoinIteration +"_time.txt" ;
+                        +"_" +distribution +"_welderjoin_gamma" +gammaValue +"_maxit" +numJoinIteration +"_time.txt" ;
                 BufferedWriter bw = new BufferedWriter(new FileWriter(joinResultTimeFilePath));
                 
                 long totalTime = 0;
@@ -165,7 +170,7 @@ public class RunJoinQuery {
                 bw.close();
                 
                 String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
-                        +"welderjoin_gamma" +gammaValue +"_maxit" +numJoinIteration +".txt" ;
+                        +"_" +distribution +"_welderjoin_gamma" +gammaValue +"_maxit" +numJoinIteration +".txt" ;
                 writeResult(joinRtrees, joinResultEntriesFilePath);
             }
         }
