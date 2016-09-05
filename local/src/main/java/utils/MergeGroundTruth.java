@@ -87,7 +87,9 @@ public class MergeGroundTruth {
         BufferedWriter bw = new BufferedWriter(new FileWriter(filePath));
         for(String key: map.keySet()) {
             Pair<Integer, Integer> pair = map.get(key);
-            bw.write(key +";" +pair.getKey() +";" +pair.getValue() +"\n");
+            int trueIntersections = pair.getValue();
+            int falseIntersections = 900 - trueIntersections;
+            bw.write(key +";" +falseIntersections +";" +trueIntersections +"\n");
         }
         bw.close();
                 
