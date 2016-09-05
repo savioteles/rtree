@@ -19,16 +19,8 @@ import spatialindex.rtree.join.RTreeJoinQuery.JoinNodePar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
 import utils.PropertiesReader;
 
-import com.vividsolutions.jts.geom.Geometry;
-
 public class RSJoinQuery {
 	
-	private int iterations;
-	
-    public RSJoinQuery(int iterations) {
-        this.iterations = iterations;
-    }
-
     private class JoinThread implements Runnable {
 
         private RTreeINode nr;
@@ -54,17 +46,8 @@ public class RSJoinQuery {
                         RTreeIEntryData entryNR = (RTreeIEntryData) nr
                                 .getEntries().get(k);
     
-                        int intersections = 0;
-                        for(int i = 0; i < iterations;i++) {
-                            Geometry nlPolygon = ProbabilisticGeometriesService.getProbabilisticDesmataGeometry(entryNL.getPolygon(), entryNL.getChild(), i);
-                            Geometry nrPolygon = ProbabilisticGeometriesService.getProbabilisticVegetaGeometry(entryNR.getPolygon(), entryNR.getChild(), i);
-                            if(nlPolygon.intersects(nrPolygon)){
-                                intersections++;
-                            }
-                        }
-                        
-                        if(intersections > 0)
-                            result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), iterations - intersections, intersections));
+                        if(entryNL.getPolygon().intersects(entryNR.getPolygon()))
+                            result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), 0, 1));
                     }
                 }
             }catch(Exception e) {

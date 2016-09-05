@@ -32,6 +32,11 @@ public class RTreeJoinQuery {
             this.false_intersections = false_intersections;
             this.true_intersections = true_intersections;
         }
+        
+        @Override
+        public String toString() {
+        	return left +";" +right;
+        }
     }
 	
     public static class JoinEntryDataPar {

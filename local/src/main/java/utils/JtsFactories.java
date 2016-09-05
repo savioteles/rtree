@@ -301,21 +301,34 @@ public class JtsFactories {
     private JtsFactories() {
     }
     
-    public static boolean intersects(Envelope env1, Envelope env2, double meters) {
-    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, meters);
-    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, meters);
+    public static boolean intersects(Envelope env1, Envelope env2, double meters, double gamma, double sd) {
+    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, meters, gamma, sd);
+    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, meters, gamma, sd);
     	return envProb1.intersects(envProb2);
     }
     
-    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv, double meters){
-    	double xMin = inputEnv.getMinX();
-    	double xMax = inputEnv.getMaxX();
-    	double yMin = inputEnv.getMinY();
-    	double yMax = inputEnv.getMaxY();
+    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv, double meters, double gamma, double sd){
+    	double d = shiftEnvelopeDistance(meters, gamma, sd);
+    	double xMin = inputEnv.getMinX() - d;
+    	double xMax = inputEnv.getMaxX() + d;
+    	double yMin = inputEnv.getMinY() - d ;
+    	double yMax = inputEnv.getMaxY() + d;
     	
-    	Coordinate min_shift_coord = shiftPoint(new Coordinate(xMin, yMin), meters);
-    	Coordinate max_shift_coord = shiftPoint(new Coordinate(xMax, yMax), meters);
-    	return new Envelope(min_shift_coord.x, max_shift_coord.x, min_shift_coord.y, max_shift_coord.y);
+    	return new Envelope(xMin, xMax, yMin, yMax);
+    }
+    
+    private static double shiftEnvelopeDistance(double meters, double gamma, double sd) {
+    	Distribution distributionType = PropertiesReader.getInstance().getDistribution();
+        switch (distributionType) {
+        case normal:
+            return metersToDegrees(meters) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+        case exponencial:
+        	return metersToDegrees(meters) + metersToDegrees(meters) * (Math.sqrt(1 / (1 - gamma)));
+        case chisquared:
+            return metersToDegrees(meters) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+        default:
+            return 0;
+        }
     }
     
     public static boolean intersects(Geometry geom1, Geometry geom2, double meters){

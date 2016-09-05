@@ -29,12 +29,14 @@ public class WelderJoinQuery {
 	private static final double errorMeters = PropertiesReader.getInstance().getErrorInMeters();
 	private int maxIterations;
 	private double gamma;
+	private double sd;
 	private static int numIterationsByStep = PropertiesReader.getInstance().getNumJoinIterationsByStep();
 	private static Map<Integer, Double> cacheTc = new HashMap<Integer, Double>();
 
-    public WelderJoinQuery(int maxIterations, double gamma) {
+    public WelderJoinQuery(int maxIterations, double gamma, double sd) {
         this.maxIterations = maxIterations;
         this.gamma = gamma;
+        this.sd = sd;
     }
 
     private class JoinThread implements Runnable {
@@ -141,7 +143,7 @@ public class WelderJoinQuery {
                         RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
                                 .getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters)   
+                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters, gamma, sd)   
                                 ) {
                             RTreeIEntryDir aux = entryNL;
                             joinList.add(new JoinNodePar(
@@ -195,7 +197,7 @@ public class WelderJoinQuery {
                 RTreeIEntryDir entryNode = (RTreeIEntryDir) node
                         .getEntry(j);
 
-                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters))
+                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters, gamma, sd))
                     result.add(new JoinEntryNodePar(entry,
                             rtree.getNode(entryNode.getChild())));
 
@@ -233,7 +235,7 @@ public class WelderJoinQuery {
                 RTreeIEntryData entryNode = (RTreeIEntryData) node.getEntry(j);
                 JoinAnalyzerObject keys = null;
                 if (JtsFactories.intersects(entry.getBoundingBox()
-                        ,entryNode.getBoundingBox(), errorMeters)) {
+                        ,entryNode.getBoundingBox(), errorMeters, gamma, sd)) {
                     if (isLeftEmpty)
                         keys = JoinPredicateAnalyzer.getChildKey(
                                 entry.getCopyKeys(), entry.getChild(),
@@ -333,7 +335,7 @@ public class WelderJoinQuery {
                         RTreeIEntry entryNL = nl.getEntries().get(k);
 
                         if (JtsFactories.intersects(entryNL.getBoundingBox(),
-                                entryNR.getBoundingBox(), errorMeters))
+                                entryNR.getBoundingBox(), errorMeters, gamma, sd))
                             result.add(
                                     new JoinEntryNodePar(entryNL,
                                             rtreeRight
