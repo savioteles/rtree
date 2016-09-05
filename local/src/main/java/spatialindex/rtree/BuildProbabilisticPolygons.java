@@ -23,32 +23,57 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class BuildProbabilisticPolygons {
 
-    private static int numThreads = PropertiesReader.getInstance().getNumSystemThreads();
-	private static ThreadPoolExecutor pool = new ThreadPoolExecutor(numThreads, numThreads * 2, 1, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
-	private static final int NUM_POLYGONS = PropertiesReader.getInstance().getNumCacheGeometries();
-	private static final int errorInMeters = PropertiesReader.getInstance().getErrorInMeters();
+    private static int numThreads;
+	private static ThreadPoolExecutor pool;
+	private static int NUM_POLYGONS;
+	private static int errorInMeters;
 
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception {
-		long time = System.currentTimeMillis();
-		ShapefileDataStore shp = new ShapefileDataStore(
-				new File(
-						PropertiesReader.getInstance().getLayer1Path())
-						.toURL());
-		write(shp,
-		        PropertiesReader.getInstance().getCacheGeometrieslayer1Path());
-		System.out.println("Time to construct layer 1 polygons: "
-				+ (System.currentTimeMillis() - time));
+	    if(args.length != 2) {
+            System.err.println("Erro na passagem de parametros. Execute o programa passando: "
+                    + "[caminho para arquivo de propriedades] [opção númerica(0, 1 ou 2) do construtor de geometrias: \n"
+                    + "0 - Construir as geometrias probabilisticas apenas do layer 1\n"
+                    + "1 - Construir as geometrias probabilisticas apenas do layer 2\n"
+                    + "2 - Construir as geometrias probabilisticas apenas de ambos os layers.]");
+            
+            System.exit(1);
+        }
+	    
+	    String configurationFilePath = args[0];
+	    PropertiesReader instance = PropertiesReader.getInstance(configurationFilePath);
+	    
+	    
+        numThreads = instance.getNumSystemThreads();
+	    pool = new ThreadPoolExecutor(numThreads, numThreads * 2, 1, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
+	    NUM_POLYGONS = instance.getNumCacheGeometries();
+	    errorInMeters = instance.getErrorInMeters();
+	    
+	    int option = Integer.parseInt(args[1]);
+	    
+	    if(option == 0 || option == 2) {
+    		long time = System.currentTimeMillis();
+    		ShapefileDataStore shp = new ShapefileDataStore(
+    				new File(
+    						instance.getLayer1Path())
+    						.toURL());
+    		write(shp,
+    		        instance.getCacheGeometrieslayer1Path());
+    		System.out.println("Time to construct layer 1 polygons: "
+    				+ (System.currentTimeMillis() - time));
+	    }
 
-		time = System.currentTimeMillis();
-		shp = new ShapefileDataStore(
-				new File(
-				        PropertiesReader.getInstance().getLayer2Path())
-						.toURL());
-		write(shp,
-		        PropertiesReader.getInstance().getCacheGeometrieslayer2Path());
-		System.out.println("Time to construct layer 2 polygons: "
-				+ (System.currentTimeMillis() - time));
+	    if(option == 1 || option == 2) {
+    		long time = System.currentTimeMillis();
+    		ShapefileDataStore shp = new ShapefileDataStore(
+    				new File(
+    				        instance.getLayer2Path())
+    						.toURL());
+    		write(shp,
+    		        instance.getCacheGeometrieslayer2Path());
+    		System.out.println("Time to construct layer 2 polygons: "
+    				+ (System.currentTimeMillis() - time));
+	    }
 
 	}
 
