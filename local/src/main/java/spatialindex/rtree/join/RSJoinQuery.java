@@ -3,6 +3,8 @@ package spatialindex.rtree.join;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -19,24 +21,16 @@ import spatialindex.rtree.join.RTreeJoinQuery.JoinNodePar;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
 import utils.PropertiesReader;
 
-import com.vividsolutions.jts.geom.Geometry;
-
 public class RSJoinQuery {
 	
-	private int iterations;
-	
-    public RSJoinQuery(int iterations) {
-        this.iterations = iterations;
-    }
-
     private class JoinThread implements Runnable {
 
         private RTreeINode nr;
         private RTreeINode nl;
-        private List<JoinResultPair> result;
+        private Queue<JoinResultPair> result;
 
         public JoinThread(RTreeINode nr, RTreeINode nl,
-                List<JoinResultPair> result) {
+                Queue<JoinResultPair> result) {
             this.nr = nr;
             this.nl = nl;
             this.result = result;
@@ -54,17 +48,8 @@ public class RSJoinQuery {
                         RTreeIEntryData entryNR = (RTreeIEntryData) nr
                                 .getEntries().get(k);
     
-                        int intersections = 0;
-                        for(int i = 0; i < iterations;i++) {
-                            Geometry nlPolygon = ProbabilisticGeometriesService.getProbabilisticDesmataGeometry(entryNL.getPolygon(), entryNL.getChild(), i);
-                            Geometry nrPolygon = ProbabilisticGeometriesService.getProbabilisticVegetaGeometry(entryNR.getPolygon(), entryNR.getChild(), i);
-                            if(nlPolygon.intersects(nrPolygon)){
-                                intersections++;
-                            }
-                        }
-                        
-                        if(intersections > 0)
-                            result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), iterations - intersections, intersections));
+                        if(entryNL.getPolygon().intersects(entryNR.getPolygon()))
+                            result.add(new JoinResultPair(entryNL.getChild(), entryNR.getChild(), 0, 1));
                     }
                 }
             }catch(Exception e) {
@@ -190,11 +175,11 @@ public class RSJoinQuery {
      *         duas entradas de n�s-folhas de duas R-trees diferentes que
      *         apresentam intersec��o.
      */
-    private List<JoinResultPair> compareEntryDatasAndNode(
+    private Queue<JoinResultPair> compareEntryDatasAndNode(
             List<RTreeIEntry> entries, List<RTreeINode> nIntern,
             boolean isLeftEmpty) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new ConcurrentLinkedQueue<RTreeJoinQuery.JoinResultPair>();
 
         for (int i = 0; i < entries.size(); i++) {
             RTreeINode node = nIntern.get(i);
@@ -238,10 +223,10 @@ public class RSJoinQuery {
      * @return uma lista de objetos {@link JoinEntryDataPar} contendo um par de
      *         entradas que apresentam intersec��o em seus poligonos.
      */
-    private  List<JoinResultPair> compareNodeLeaf(
+    private  Queue<JoinResultPair> compareNodeLeaf(
             List<RTreeINode> nleft, List<RTreeINode> nright) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new ConcurrentLinkedQueue<RTreeJoinQuery.JoinResultPair>();
         int numSystemThreads = PropertiesReader.getInstance().getNumSystemThreads();
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(numSystemThreads, numSystemThreads * 2,
                 10,
@@ -319,7 +304,7 @@ public class RSJoinQuery {
     }
 
     private void fillResult(JoinAnalyzerObject keys,
-            List<JoinResultPair> result) {
+            Queue<JoinResultPair> result) {
         // obtem as chaves de r e s.
         String rChild = keys.getrChild();
         String sChild = keys.getsChild();
@@ -342,7 +327,7 @@ public class RSJoinQuery {
      *         intersec��o entre si. Uma entrada � da R-Tree left e a outra da
      *         R-Tree right.
      */
-    public List<JoinResultPair> joinRtrees(RTreeIRTree left,
+    public Queue<JoinResultPair> joinRtrees(RTreeIRTree left,
             RTreeIRTree right) {
     	
         List<RTreeINode> listl = new LinkedList<RTreeINode>();
@@ -437,7 +422,7 @@ public class RSJoinQuery {
             }
 
         // N�vel das folhas nas duas �rvores - etapa de refinamento
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = null;
 
         /*
          * Verifica se alguma �rvore tem altura maior que a outra. Se isso

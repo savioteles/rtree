@@ -40,6 +40,7 @@ public class PropertiesReader {
     private int numSystemThreads;
     
     private int errorInMeters;
+    private double sd;
     
     private String layer1Name;
     private int layer1Capacity;
@@ -106,6 +107,7 @@ public class PropertiesReader {
         }
         
         p = Double.parseDouble(pro.getProperty("p"));
+        sd = Double.parseDouble(pro.getProperty("sd", "0"));
     }
 
     public Distribution getDistribution() {
@@ -186,5 +188,9 @@ public class PropertiesReader {
 
     public double getP() {
         return p;
+    }
+    
+    public double getSd() {
+    	return sd;
     }
 }

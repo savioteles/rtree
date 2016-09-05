@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -21,7 +22,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 
 public class GroundTruthJoin {
-    public List<JoinResultPair> runJoin( ShapefileDataStore shpLayer1,  ShapefileDataStore shpLayer2, int numCacheGeometries) throws IllegalArgumentException, NoSuchElementException, IOException, ParseException {
+    public Queue<JoinResultPair> runJoin( ShapefileDataStore shpLayer1,  ShapefileDataStore shpLayer2, int numCacheGeometries) throws IllegalArgumentException, NoSuchElementException, IOException, ParseException {
         long time = System.currentTimeMillis();
         FeatureReader<SimpleFeatureType,SimpleFeature> readerLayer2 = shpLayer2.getFeatureReader();
         List<Feature> layer2Features = new ArrayList<Feature>();
@@ -32,7 +33,7 @@ public class GroundTruthJoin {
         }
         
         FeatureReader<SimpleFeatureType,SimpleFeature> readerLayer1 = shpLayer1.getFeatureReader();
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new LinkedBlockingQueue<JoinResultPair>();
         int numSystemThreads = PropertiesReader.getInstance().getNumSystemThreads();
         ThreadPoolExecutor pool = new ThreadPoolExecutor(numSystemThreads, numSystemThreads * 2,
                 10,
@@ -61,10 +62,10 @@ public class GroundTruthJoin {
         String layer1Id;
         int numCacheGeometries;
         List<Feature> layer2Features;
-        private List<JoinResultPair> result;
+        private Queue<JoinResultPair> result;
         
         public IntersectsThread(String layer1Id, int numCacheGeometries,
-                List<Feature> layer2Features, List<JoinResultPair> result) {
+                List<Feature> layer2Features, Queue<JoinResultPair> result) {
             this.layer1Id = layer1Id;
             this.numCacheGeometries = numCacheGeometries;
             this.layer2Features = layer2Features;

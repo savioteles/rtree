@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -29,22 +31,24 @@ public class WelderJoinQuery {
 	private static final double errorMeters = PropertiesReader.getInstance().getErrorInMeters();
 	private int maxIterations;
 	private double gamma;
+	private double sd;
 	private static int numIterationsByStep = PropertiesReader.getInstance().getNumJoinIterationsByStep();
 	private static Map<Integer, Double> cacheTc = new HashMap<Integer, Double>();
 
-    public WelderJoinQuery(int maxIterations, double gamma) {
+    public WelderJoinQuery(int maxIterations, double gamma, double sd) {
         this.maxIterations = maxIterations;
         this.gamma = gamma;
+        this.sd = sd;
     }
 
     private class JoinThread implements Runnable {
 
         private RTreeINode nr;
         private RTreeINode nl;
-        private List<JoinResultPair> result;
+        private Queue<JoinResultPair> result;
 
         public JoinThread(RTreeINode nr, RTreeINode nl,
-                List<JoinResultPair> result) {
+                Queue<JoinResultPair> result) {
             this.nr = nr;
             this.nl = nl;
             this.result = result;
@@ -141,7 +145,7 @@ public class WelderJoinQuery {
                         RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
                                 .getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters)   
+                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters, gamma, sd)   
                                 ) {
                             RTreeIEntryDir aux = entryNL;
                             joinList.add(new JoinNodePar(
@@ -195,7 +199,7 @@ public class WelderJoinQuery {
                 RTreeIEntryDir entryNode = (RTreeIEntryDir) node
                         .getEntry(j);
 
-                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters))
+                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters, gamma, sd))
                     result.add(new JoinEntryNodePar(entry,
                             rtree.getNode(entryNode.getChild())));
 
@@ -219,11 +223,11 @@ public class WelderJoinQuery {
      *         duas entradas de n�s-folhas de duas R-trees diferentes que
      *         apresentam intersec��o.
      */
-    private List<JoinResultPair> compareEntryDatasAndNode(
+    private Queue<JoinResultPair> compareEntryDatasAndNode(
             List<RTreeIEntry> entries, List<RTreeINode> nIntern,
             boolean isLeftEmpty) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new ConcurrentLinkedQueue<RTreeJoinQuery.JoinResultPair>();
 
         for (int i = 0; i < entries.size(); i++) {
             RTreeINode node = nIntern.get(i);
@@ -233,7 +237,7 @@ public class WelderJoinQuery {
                 RTreeIEntryData entryNode = (RTreeIEntryData) node.getEntry(j);
                 JoinAnalyzerObject keys = null;
                 if (JtsFactories.intersects(entry.getBoundingBox()
-                        ,entryNode.getBoundingBox(), errorMeters)) {
+                        ,entryNode.getBoundingBox(), errorMeters, gamma, sd)) {
                     if (isLeftEmpty)
                         keys = JoinPredicateAnalyzer.getChildKey(
                                 entry.getCopyKeys(), entry.getChild(),
@@ -268,10 +272,10 @@ public class WelderJoinQuery {
      * @return uma lista de objetos {@link JoinEntryDataPar} contendo um par de
      *         entradas que apresentam intersec��o em seus poligonos.
      */
-    private  List<JoinResultPair> compareNodeLeaf(
+    private  Queue<JoinResultPair> compareNodeLeaf(
             List<RTreeINode> nleft, List<RTreeINode> nright) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new ConcurrentLinkedQueue<RTreeJoinQuery.JoinResultPair>();
         int numSystemThreads = PropertiesReader.getInstance().getNumSystemThreads();
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(numSystemThreads, numSystemThreads * 2,
                 10,
@@ -333,7 +337,7 @@ public class WelderJoinQuery {
                         RTreeIEntry entryNL = nl.getEntries().get(k);
 
                         if (JtsFactories.intersects(entryNL.getBoundingBox(),
-                                entryNR.getBoundingBox(), errorMeters))
+                                entryNR.getBoundingBox(), errorMeters, gamma, sd))
                             result.add(
                                     new JoinEntryNodePar(entryNL,
                                             rtreeRight
@@ -350,7 +354,7 @@ public class WelderJoinQuery {
     }
 
     private void fillResult(JoinAnalyzerObject keys,
-            List<JoinResultPair> result) {
+            Queue<JoinResultPair> result) {
         // obtem as chaves de r e s.
         String rChild = keys.getrChild();
         String sChild = keys.getsChild();
@@ -373,7 +377,7 @@ public class WelderJoinQuery {
      *         intersec��o entre si. Uma entrada � da R-Tree left e a outra da
      *         R-Tree right.
      */
-    public List<JoinResultPair> joinRtrees(RTreeIRTree left,
+    public Queue<JoinResultPair> joinRtrees(RTreeIRTree left,
             RTreeIRTree right) {
     	
         List<RTreeINode> listl = new LinkedList<RTreeINode>();
@@ -468,7 +472,7 @@ public class WelderJoinQuery {
             }
 
         // N�vel das folhas nas duas �rvores - etapa de refinamento
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result;
 
         /*
          * Verifica se alguma �rvore tem altura maior que a outra. Se isso
