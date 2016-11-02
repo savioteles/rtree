@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 
 import org.geotools.data.FeatureReader;
 import org.geotools.data.shapefile.ShapefileDataStore;
@@ -79,7 +80,7 @@ public class RunJoinQuery {
         long time = System.currentTimeMillis();
         ShapefileDataStore shpLayer1 = new ShapefileDataStore(new File(filePathLayer1).toURL());
         ShapefileDataStore shpLayer2 = new ShapefileDataStore(new File(filePathLayer2).toURL());
-        List<JoinResultPair> joinRtrees = new GroundTruthJoin().runJoin(shpLayer1, shpLayer2, numCacheGeometries);
+        Queue<JoinResultPair> joinRtrees = new GroundTruthJoin().runJoin(shpLayer1, shpLayer2, numCacheGeometries);
         
         String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
                 +"_ground_truth_" +numCacheGeometries +".txt";
@@ -91,12 +92,13 @@ public class RunJoinQuery {
 	private static void runRSJoin() throws IOException, NodeIsLeafException{
         List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
+        String distribution = PropertiesReader.getInstance().getDistribution().toString();
         for(int numJoinIteration: numJoinIterations) {
         	
         	Map<String, Integer> resultMap = null;
         	long totalTime = 0;
         	String joinResultTimeFilePath = properties.getResultJoinFilePath()
-                    +"_rsjoin_maxit" +numJoinIteration +"_time.txt" ;
+        	        +"_" +distribution +"_rsjoin_maxit" +numJoinIteration +"_time.txt" ;
             BufferedWriter bw = new BufferedWriter(new FileWriter(joinResultTimeFilePath));
         	
         	for(int i = 0; i < numJoinExecutions; i++) {
@@ -104,18 +106,24 @@ public class RunJoinQuery {
         		resultMap = new HashMap<String, Integer>();
 	            long time = System.currentTimeMillis();
 	            for(int it = 0; it < numJoinIteration; it++) {
-	                buildRtrees(true);
-	                List<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(treeLayer1, treeLayer2);
+	                buildRtrees(false);
+	                Queue<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(treeLayer1, treeLayer2);
 	                for(JoinResultPair result: joinRtrees) {
+	                    if(result == null)
+	                        continue;
 	                	Integer count = resultMap.get(result.toString());
-	                	if(count == null) {
+	                	
+	                	if(count == null) 
 	                		count = 0;
-	                		resultMap.put(result.toString(), count);
-	                	}
+	                	
 	                	count++;
+	                	resultMap.put(result.toString(), count);
 	                }
+	                for(JoinResultPair r: joinRtrees)
+	                    System.out.println(r);
 	            }
 	            
+	           
 	            time = System.currentTimeMillis() - time;
                 bw.write("Join " +i +": " +time +"\n");
                 totalTime += time;
@@ -127,26 +135,27 @@ public class RunJoinQuery {
             bw.close();
             
             String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
-                    +"_rsjoin_maxit" +numJoinIteration +".txt" ;
+                    +"_" +distribution +"_rsjoin_maxit" +numJoinIteration +".txt";
             writeResult(resultMap, numJoinIteration, joinResultEntriesFilePath);
         }
     }
 	
 	private static void runWelderJoin() throws IOException, NodeIsLeafException{
 	    buildRtrees(false);
-	    int sd = PropertiesReader.getInstance().getSd();
+	    double sd = PropertiesReader.getInstance().getSd();
 	    List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         List<Double> gammaValues = PropertiesReader.getInstance().getGammaValues();
 	    int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
+	    String distribution = PropertiesReader.getInstance().getDistribution().toString();
         for(int numJoinIteration: numJoinIterations) {
             for(double gammaValue: gammaValues) {
                 
                 String joinResultTimeFilePath = properties.getResultJoinFilePath()
-                        +"_gamma" +gammaValue +"_maxit" +numJoinIteration +"_time.txt" ;
+                        +"_" +distribution +"_welderjoin_gamma" +gammaValue +"_maxit" +numJoinIteration +"_time.txt" ;
                 BufferedWriter bw = new BufferedWriter(new FileWriter(joinResultTimeFilePath));
                 
                 long totalTime = 0;
-                List<JoinResultPair> joinRtrees = null;
+                Queue<JoinResultPair> joinRtrees = null;
                 for(int i = 0; i < numJoinExecutions; i++) {
                     long time = System.currentTimeMillis();
                     joinRtrees = new WelderJoinQuery(numJoinIteration, gammaValue, sd).joinRtrees(treeLayer1, treeLayer2);
@@ -161,7 +170,7 @@ public class RunJoinQuery {
                 bw.close();
                 
                 String joinResultEntriesFilePath = properties.getResultJoinFilePath() 
-                        +"_gamma" +gammaValue +"_maxit" +numJoinIteration +".txt" ;
+                        +"_" +distribution +"_welderjoin_gamma" +gammaValue +"_maxit" +numJoinIteration +".txt" ;
                 writeResult(joinRtrees, joinResultEntriesFilePath);
             }
         }
@@ -201,7 +210,7 @@ public class RunJoinQuery {
         return tree;
 	}
 	
-	private static void writeResult(List<JoinResultPair> result, String resultJoinFilePath) throws IOException {
+	private static void writeResult(Queue<JoinResultPair> result, String resultJoinFilePath) throws IOException {
         BufferedWriter bw = new BufferedWriter(new FileWriter(resultJoinFilePath));
 	    for(JoinResultPair r: result) {
 	        if(r == null)
@@ -231,11 +240,14 @@ public class RunJoinQuery {
                     .equals(featureType.getGeometryDescriptor().getName()
                             .toString())) {
                 Geometry geometry = (Geometry) prop.getValue();
-                Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(geometry, errorInMeters);
-                if (!probabilisticGeom.isValid()) {
-                    probabilisticGeom = geometry.convexHull();
-                    probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(
-                            probabilisticGeom, errorInMeters);
+                if(shiftPoint) {
+                    Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(geometry, errorInMeters);
+                    if (!probabilisticGeom.isValid()) {
+                        probabilisticGeom = geometry.convexHull();
+                        probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(
+                                probabilisticGeom, errorInMeters);
+                    }
+                    return probabilisticGeom;
                 }
                 return geometry;
             }

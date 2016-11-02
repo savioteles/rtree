@@ -3,6 +3,8 @@ package spatialindex.rtree.join;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -25,10 +27,10 @@ public class RSJoinQuery {
 
         private RTreeINode nr;
         private RTreeINode nl;
-        private List<JoinResultPair> result;
+        private Queue<JoinResultPair> result;
 
         public JoinThread(RTreeINode nr, RTreeINode nl,
-                List<JoinResultPair> result) {
+                Queue<JoinResultPair> result) {
             this.nr = nr;
             this.nl = nl;
             this.result = result;
@@ -173,11 +175,11 @@ public class RSJoinQuery {
      *         duas entradas de n�s-folhas de duas R-trees diferentes que
      *         apresentam intersec��o.
      */
-    private List<JoinResultPair> compareEntryDatasAndNode(
+    private Queue<JoinResultPair> compareEntryDatasAndNode(
             List<RTreeIEntry> entries, List<RTreeINode> nIntern,
             boolean isLeftEmpty) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new ConcurrentLinkedQueue<RTreeJoinQuery.JoinResultPair>();
 
         for (int i = 0; i < entries.size(); i++) {
             RTreeINode node = nIntern.get(i);
@@ -221,10 +223,10 @@ public class RSJoinQuery {
      * @return uma lista de objetos {@link JoinEntryDataPar} contendo um par de
      *         entradas que apresentam intersec��o em seus poligonos.
      */
-    private  List<JoinResultPair> compareNodeLeaf(
+    private  Queue<JoinResultPair> compareNodeLeaf(
             List<RTreeINode> nleft, List<RTreeINode> nright) {
 
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = new ConcurrentLinkedQueue<RTreeJoinQuery.JoinResultPair>();
         int numSystemThreads = PropertiesReader.getInstance().getNumSystemThreads();
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(numSystemThreads, numSystemThreads * 2,
                 10,
@@ -302,7 +304,7 @@ public class RSJoinQuery {
     }
 
     private void fillResult(JoinAnalyzerObject keys,
-            List<JoinResultPair> result) {
+            Queue<JoinResultPair> result) {
         // obtem as chaves de r e s.
         String rChild = keys.getrChild();
         String sChild = keys.getsChild();
@@ -325,7 +327,7 @@ public class RSJoinQuery {
      *         intersec��o entre si. Uma entrada � da R-Tree left e a outra da
      *         R-Tree right.
      */
-    public List<JoinResultPair> joinRtrees(RTreeIRTree left,
+    public Queue<JoinResultPair> joinRtrees(RTreeIRTree left,
             RTreeIRTree right) {
     	
         List<RTreeINode> listl = new LinkedList<RTreeINode>();
@@ -420,7 +422,7 @@ public class RSJoinQuery {
             }
 
         // N�vel das folhas nas duas �rvores - etapa de refinamento
-        List<JoinResultPair> result = new ArrayList<JoinResultPair>();
+        Queue<JoinResultPair> result = null;
 
         /*
          * Verifica se alguma �rvore tem altura maior que a outra. Se isso

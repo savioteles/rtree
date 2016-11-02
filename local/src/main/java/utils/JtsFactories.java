@@ -7,6 +7,8 @@ import java.io.StringWriter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -317,18 +319,32 @@ public class JtsFactories {
     	return new Envelope(xMin, xMax, yMin, yMax);
     }
     
-    private static double shiftEnvelopeDistance(double meters, double gamma, double sd) {
+    private static Map<String, Double> shiftCache = new HashMap<String, Double>();
+    private static double shiftEnvelopeDistance(double mean, double gamma, double sd) {
     	Distribution distributionType = PropertiesReader.getInstance().getDistribution();
+    	
+    	String key = distributionType.toString() +";" +mean +";" +gamma +";" +sd;
+    	Double shift = shiftCache.get(key);
+    	if(shift != null) 
+    	    return shift;
+    	    
         switch (distributionType) {
         case normal:
-            return metersToDegrees(meters) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+            shift = metersToDegrees(mean) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+            break;
         case exponencial:
-        	return metersToDegrees(meters) + metersToDegrees(meters) * (Math.sqrt(1 / (1 - gamma)));
+            shift = metersToDegrees(mean) + metersToDegrees(mean) * (Math.sqrt(1 / (1 - gamma)));
+        	break;
         case chisquared:
-            return metersToDegrees(meters) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+            mean++;
+            shift = metersToDegrees(mean) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+            break;
         default:
             return 0;
         }
+        
+        shiftCache.put(key, shift);
+        return shift;
     }
     
     public static boolean intersects(Geometry geom1, Geometry geom2, double meters){
