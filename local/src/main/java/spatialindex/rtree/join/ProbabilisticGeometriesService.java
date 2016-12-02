@@ -11,6 +11,7 @@ import org.geotools.util.LRULinkedHashMap;
 import utils.JtsFactories;
 import utils.PropertiesReader;
 
+import com.google.common.base.Strings;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 
@@ -58,20 +59,36 @@ public class ProbabilisticGeometriesService {
         }
     }
     
-    public static List<Geometry> getCachedDesmataPolygons(String id, int size) throws IOException, ParseException {
-        return getPolygons(desmataCacheFolder, "desmata", id, size);
+    public static List<Geometry> getCachedDesmataPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(desmataCacheFolder, "desmata", geom, id, size);
     }
     
-    public static List<Geometry> getCachedVegetaPolygons(String id, int size) throws IOException, ParseException {
-        return getPolygons(vegetaCacheFolder, "vegeta", id, size);
+    public static List<Geometry> getCachedVegetaPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(vegetaCacheFolder, "vegeta", geom, id, size);
     }
     
-    private static List<Geometry> getPolygons(String folderPath, String layer, String id, int size) throws IOException, ParseException {
+    private static List<Geometry> getPolygons(String folderPath, String layer, Geometry originalGeom, String id, int size) throws IOException, ParseException {
         String cacheId = layer +id;
         List<Geometry> geometries = cache.get(cacheId);
         
         if(geometries != null && geometries.size() >= size)
             return geometries;
+        
+        if(Strings.isNullOrEmpty(folderPath)) {
+        	if(geometries == null)
+        		geometries = new ArrayList<Geometry>();
+        	
+        	for(int i = 0; i < size; i++) {
+        		Geometry probabilisticGeometry = getProbabilisticGeometry(originalGeom, layer, cacheId, i);
+        		geometries.add(probabilisticGeometry);
+        		
+        		if(geometries.size() >= size)
+        			break;
+        	}
+        	
+        	cache.put(cacheId, geometries);
+        	return geometries;
+        }
         
         if(geometries == null) {
             geometries = new ArrayList<Geometry>();

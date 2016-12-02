@@ -48,13 +48,13 @@ public class RSCachedJoinQuery {
                 for (int j = 0; j < nl.getEntries().size(); j++) {
                     RTreeIEntryData entryNL = (RTreeIEntryData) nl.getEntries()
                             .get(j);
-                    List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getCachedDesmataPolygons(entryNL.getChild(), iterations);
+                    List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getCachedDesmataPolygons(entryNL.getChild(), entryNL.getPolygon(), iterations);
                     
                     for (int k = 0; k < nr.getEntries().size(); k++) {
     
                         RTreeIEntryData entryNR = (RTreeIEntryData) nr
                                 .getEntries().get(k);
-                        List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(entryNR.getChild(), iterations);
+                        List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(entryNR.getChild(), entryNR.getPolygon(), iterations);
     
                         int intersections = 0;
                         int total = desmataPolygons.size();

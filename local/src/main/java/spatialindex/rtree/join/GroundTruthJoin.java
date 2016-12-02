@@ -12,10 +12,13 @@ import java.util.concurrent.TimeUnit;
 import org.geotools.data.FeatureReader;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.opengis.feature.Feature;
+import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.feature.type.FeatureType;
 
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
+import utils.JtsFactories;
 import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
@@ -43,7 +46,8 @@ public class GroundTruthJoin {
         while(readerLayer1.hasNext()) {
             Feature feature = readerLayer1.next();
             String layer1Id = feature.getIdentifier().getID().split("\\.")[1];
-            pool.execute(new IntersectsThread(layer1Id, numCacheGeometries, layer2Features, result));
+            Geometry geometry = getGeomOfFeature(feature, feature.getType(), false);
+            pool.execute(new IntersectsThread(layer1Id, geometry, numCacheGeometries, layer2Features, result));
         }
         
         try {
@@ -61,11 +65,13 @@ public class GroundTruthJoin {
     private class IntersectsThread implements Runnable {
         String layer1Id;
         int numCacheGeometries;
+        Geometry layer1Geom;
         List<Feature> layer2Features;
         private Queue<JoinResultPair> result;
         
-        public IntersectsThread(String layer1Id, int numCacheGeometries,
+        public IntersectsThread(String layer1Id, Geometry layer1Geom, int numCacheGeometries,
                 List<Feature> layer2Features, Queue<JoinResultPair> result) {
+        	this.layer1Geom = layer1Geom;
             this.layer1Id = layer1Id;
             this.numCacheGeometries = numCacheGeometries;
             this.layer2Features = layer2Features;
@@ -75,10 +81,11 @@ public class GroundTruthJoin {
         @Override
         public void run() {
             try {
-                List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getCachedDesmataPolygons(layer1Id, numCacheGeometries);
+                List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getCachedDesmataPolygons(layer1Id, layer1Geom, numCacheGeometries);
                 for(Feature featureLayer2: layer2Features) {
                     String layer2Id = featureLayer2.getIdentifier().getID().split("\\.")[1];
-                    List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(layer2Id, numCacheGeometries);
+                    Geometry layer2Geom = getGeomOfFeature(featureLayer2, featureLayer2.getType(), false);
+                    List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(layer2Id, layer2Geom, numCacheGeometries);
                     int total = desmataPolygons.size();
                     int intersections = intersectsGeometries(desmataPolygons, vegetaPolygons);
                     if(intersections > 0) {
@@ -101,5 +108,28 @@ public class GroundTruthJoin {
             
             return intersections;
         }
+    }
+    
+    public static Geometry getGeomOfFeature(Feature f,
+            FeatureType featureType, boolean shiftPoint) {
+		int errorInMeters = PropertiesReader.getInstance().getErrorInMeters();
+        for (Property prop : f.getProperties())
+            if (prop.getName().getURI().toLowerCase().intern()
+                    .equals(featureType.getGeometryDescriptor().getName()
+                            .toString())) {
+                Geometry geometry = (Geometry) prop.getValue();
+                if(shiftPoint) {
+                    Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(geometry, errorInMeters);
+                    if (!probabilisticGeom.isValid()) {
+                        probabilisticGeom = geometry.convexHull();
+                        probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(
+                                probabilisticGeom, errorInMeters);
+                    }
+                    return probabilisticGeom;
+                }
+                return geometry;
+            }
+
+        return null;
     }
 }
