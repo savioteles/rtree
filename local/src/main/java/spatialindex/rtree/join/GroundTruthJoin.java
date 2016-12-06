@@ -81,7 +81,7 @@ public class GroundTruthJoin {
         @Override
         public void run() {
             try {
-                List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getCachedDesmataPolygons(layer1Id, layer1Geom, numCacheGeometries);
+                List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getDesmataPolygons(layer1Id, layer1Geom, numCacheGeometries);
                 for(Feature featureLayer2: layer2Features) {
                     String layer2Id = featureLayer2.getIdentifier().getID().split("\\.")[1];
                     Geometry layer2Geom = getGeomOfFeature(featureLayer2, featureLayer2.getType(), false);

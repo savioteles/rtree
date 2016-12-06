@@ -60,19 +60,30 @@ public class ProbabilisticGeometriesService {
     }
     
     public static List<Geometry> getCachedDesmataPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
-        return getPolygons(desmataCacheFolder, "desmata", geom, id, size);
+        return getPolygons(desmataCacheFolder, "desmata", geom, id, size, true);
+    }
+    
+    public static List<Geometry> getDesmataPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(desmataCacheFolder, "desmata", geom, id, size, false);
     }
     
     public static List<Geometry> getCachedVegetaPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
-        return getPolygons(vegetaCacheFolder, "vegeta", geom, id, size);
+        return getPolygons(vegetaCacheFolder, "vegeta", geom, id, size, true);
     }
     
-    private static List<Geometry> getPolygons(String folderPath, String layer, Geometry originalGeom, String id, int size) throws IOException, ParseException {
+    public static List<Geometry> getVegetaPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(vegetaCacheFolder, "vegeta", geom, id, size, false);
+    }
+    
+    private static List<Geometry> getPolygons(String folderPath, String layer, Geometry originalGeom, String id, int size, boolean cached) throws IOException, ParseException {
         String cacheId = layer +id;
-        List<Geometry> geometries = cache.get(cacheId);
+        List<Geometry> geometries = null;
         
-        if(geometries != null && geometries.size() >= size)
-            return geometries;
+        if(cached) {
+            geometries = cache.get(cacheId);
+            if(geometries != null && geometries.size() >= size)
+                return geometries;
+        }
         
         if(Strings.isNullOrEmpty(folderPath)) {
         	if(geometries == null)
@@ -86,7 +97,8 @@ public class ProbabilisticGeometriesService {
         			break;
         	}
         	
-        	cache.put(cacheId, geometries);
+        	if(cached)
+        	    cache.put(cacheId, geometries);
         	return geometries;
         }
         
@@ -102,7 +114,8 @@ public class ProbabilisticGeometriesService {
             geometries.add(geom);
         }
         
-        cache.put(cacheId, geometries);
+        if(cached)
+            cache.put(cacheId, geometries);
         reader.close();
         
         return geometries;
