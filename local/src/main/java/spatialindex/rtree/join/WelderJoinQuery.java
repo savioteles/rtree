@@ -73,8 +73,8 @@ public class WelderJoinQuery {
                         while(true) {
                             for(int i = 0; i < numIterationsByStep;i++) {
                                 iterations++;
-                                Geometry nlPolygon = ProbabilisticGeometriesService.getProbabilisticDesmataGeometry(entryNL.getPolygon(), entryNL.getChild(), i);
-                                Geometry nrPolygon = ProbabilisticGeometriesService.getProbabilisticVegetaGeometry(entryNR.getPolygon(), entryNR.getChild(), i);
+                                Geometry nlPolygon = ProbabilisticGeometriesService.getLayer1ProbabilisticGeometry(entryNL.getPolygon(), entryNL.getChild(), i);
+                                Geometry nrPolygon = ProbabilisticGeometriesService.getLayer2ProbabilisticGeometry(entryNR.getPolygon(), entryNR.getChild(), i);
                                 if(nlPolygon.intersects(nrPolygon)){
                                     intersections++;
                                 }

@@ -16,20 +16,23 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 
 public class ProbabilisticGeometriesService {
-    private static final String desmataCacheFolder = PropertiesReader.getInstance().getCacheGeometrieslayer1Path();
-    private static final String vegetaCacheFolder = PropertiesReader.getInstance().getCacheGeometrieslayer2Path();
+    private static final String layer1CacheFolder = PropertiesReader.getInstance().getCacheGeometrieslayer1Path();
+    private static final String layer2CacheFolder = PropertiesReader.getInstance().getCacheGeometrieslayer2Path();
+    
+    private static final String layer1Name = PropertiesReader.getInstance().getLayer1Name();
+    private static final String layer2Name = PropertiesReader.getInstance().getLayer2Name();
     
     private static final int MAX_CACHE_SIZE = PropertiesReader.getInstance().getMaxCacheEntries();
     private static final int ERROR_METERS = PropertiesReader.getInstance().getErrorInMeters();
     
     private static LRULinkedHashMap<String, List<Geometry>> cache = new LRULinkedHashMap<String, List<Geometry>>(MAX_CACHE_SIZE, 0.75f, false, MAX_CACHE_SIZE);
     
-    public static Geometry getProbabilisticDesmataGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
-        return getProbabilisticGeometry(originalGeom, "desmata", id, index);
+    public static Geometry getLayer1ProbabilisticGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
+        return getProbabilisticGeometry(originalGeom, layer1Name, id, index);
     }
     
-    public static Geometry getProbabilisticVegetaGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
-        return getProbabilisticGeometry(originalGeom, "vegeta", id, index);
+    public static Geometry getLayer2ProbabilisticGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
+        return getProbabilisticGeometry(originalGeom, layer2Name, id, index);
     }
     
     private static Geometry getProbabilisticGeometry(Geometry originalGeom, String layer, String id, int index) throws IOException, ParseException {
@@ -49,9 +52,7 @@ public class ProbabilisticGeometriesService {
             }
             Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(originalGeom, ERROR_METERS);
             if (!probabilisticGeom.isValid()) {
-                probabilisticGeom = originalGeom.convexHull();
-                probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(
-                        probabilisticGeom, ERROR_METERS);
+                throw new ParseException("The probabilistic geometry " +cacheId +" is not valid.");
             }
             geometries.add(probabilisticGeom);
             
@@ -59,20 +60,20 @@ public class ProbabilisticGeometriesService {
         }
     }
     
-    public static List<Geometry> getCachedDesmataPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
-        return getPolygons(desmataCacheFolder, "desmata", geom, id, size, true);
+    public static List<Geometry> getLayer1CachedPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(layer1CacheFolder, layer1Name, geom, id, size, true);
     }
     
-    public static List<Geometry> getDesmataPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
-        return getPolygons(desmataCacheFolder, "desmata", geom, id, size, false);
+    public static List<Geometry> getLayer1Polygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(layer1CacheFolder, layer1Name, geom, id, size, false);
     }
     
-    public static List<Geometry> getCachedVegetaPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
-        return getPolygons(vegetaCacheFolder, "vegeta", geom, id, size, true);
+    public static List<Geometry> getLayer2CachedPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(layer2CacheFolder, layer2Name, geom, id, size, true);
     }
     
-    public static List<Geometry> getVegetaPolygons(String id, Geometry geom, int size) throws IOException, ParseException {
-        return getPolygons(vegetaCacheFolder, "vegeta", geom, id, size, false);
+    public static List<Geometry> getLayer2Polygons(String id, Geometry geom, int size) throws IOException, ParseException {
+        return getPolygons(layer2CacheFolder, layer2Name, geom, id, size, false);
     }
     
     private static List<Geometry> getPolygons(String folderPath, String layer, Geometry originalGeom, String id, int size, boolean cached) throws IOException, ParseException {

@@ -18,7 +18,6 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.FeatureType;
 
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
-import utils.JtsFactories;
 import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
@@ -46,9 +45,8 @@ public class GroundTruthJoin {
         while(readerLayer1.hasNext()) {
             Feature feature = readerLayer1.next();
             String layer1Id = feature.getIdentifier().getID().split("\\.")[1];
-            Geometry geometry = getGeomOfFeature(feature, feature.getType(), false);
-            runJoin(layer1Id, numCacheGeometries, geometry, layer2Features, result);
-//            pool.execute(new IntersectsThread(layer1Id, geometry, numCacheGeometries, layer2Features, result));
+            Geometry geometry = getGeomOfFeature(feature, feature.getType());
+            pool.execute(new IntersectsThread(layer1Id, geometry, numCacheGeometries, layer2Features, result));
         }
         
         try {
@@ -72,7 +70,7 @@ public class GroundTruthJoin {
         
         public IntersectsThread(String layer1Id, Geometry layer1Geom, int numCacheGeometries,
                 List<Feature> layer2Features, Queue<JoinResultPair> result) {
-        	this.layer1Geom = layer1Geom;
+            this.layer1Geom = layer1Geom;
             this.layer1Id = layer1Id;
             this.numCacheGeometries = numCacheGeometries;
             this.layer2Features = layer2Features;
@@ -87,16 +85,14 @@ public class GroundTruthJoin {
                 e.printStackTrace();
             }
         }
-        
-        
     }
     
     public static void runJoin(String layer1Id, int numCacheGeometries, Geometry layer1Geom, List<Feature> layer2Features, Queue<JoinResultPair> result) throws IOException, ParseException {
-    	List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getDesmataPolygons(layer1Id, layer1Geom, numCacheGeometries);
+        List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getLayer1CachedPolygons(layer1Id, layer1Geom, numCacheGeometries);
         for(Feature featureLayer2: layer2Features) {
             String layer2Id = featureLayer2.getIdentifier().getID().split("\\.")[1];
-            Geometry layer2Geom = getGeomOfFeature(featureLayer2, featureLayer2.getType(), false);
-            List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getCachedVegetaPolygons(layer2Id, layer2Geom, numCacheGeometries);
+            Geometry layer2Geom = getGeomOfFeature(featureLayer2, featureLayer2.getType());
+            List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getLayer2CachedPolygons(layer2Id, layer2Geom, numCacheGeometries);
             int total = desmataPolygons.size();
             int intersections = intersectsGeometries(desmataPolygons, vegetaPolygons);
             if(intersections > 0) {
@@ -118,23 +114,12 @@ public class GroundTruthJoin {
     }
     
     public static Geometry getGeomOfFeature(Feature f,
-            FeatureType featureType, boolean shiftPoint) {
-		int errorInMeters = PropertiesReader.getInstance().getErrorInMeters();
+            FeatureType featureType) {
         for (Property prop : f.getProperties())
             if (prop.getName().getURI().toLowerCase().intern()
                     .equals(featureType.getGeometryDescriptor().getName()
                             .toString())) {
-                Geometry geometry = (Geometry) prop.getValue();
-                if(shiftPoint) {
-                    Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(geometry, errorInMeters);
-                    if (!probabilisticGeom.isValid()) {
-                        probabilisticGeom = geometry.convexHull();
-                        probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(
-                                probabilisticGeom, errorInMeters);
-                    }
-                    return probabilisticGeom;
-                }
-                return geometry;
+                return (Geometry) prop.getValue();
             }
 
         return null;
