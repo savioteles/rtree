@@ -22,17 +22,17 @@ public class GenerateCachedPolygons {
 
     private static final int TRIES = 10;
     private static final int CACHED_GEOMS = 1000;
-    private static String filePathLayer1 = "/home/savio/Google Drive/Artigos/rtree/layers/desmatamento.shp";
-    private static String filePathLayer2 = "/home/savio/Google Drive/Artigos/rtree/layers/vegetacao.shp";
-    private static String filePathLayer3 = "/home/savio/Google Drive/Artigos/rtree/layers/queimada_pastagem.shp";
+    private static String filePathLayer1 = "/home/savio/Welder/rtree/layers/desmatamento.shp";
+    private static String filePathLayer2 = "/home/savio/Welder/rtree/layers/vegetacao.shp";
+    private static String filePathLayer3 = "/home/savio/Welder/rtree/layers/queimada_pastagem.shp";
     
-    private static String fileCachePathLayer1 = "/home/savio/polygons/desmata_cache";
-    private static String fileCachePathLayer2 = "/home/savio/polygons/vegeta_cache";
-    private static String fileCachePathLayer3 = "/home/savio/polygons/queimada_cache";
+    private static String fileCachePathLayer1 = "/home/savio/Welder/polygons/desmata_cache";
+    private static String fileCachePathLayer2 = "/home/savio/Welder/polygons/vegeta_cache";
+    private static String fileCachePathLayer3 = "/home/savio/Welder/polygons/queimada_cache";
 
     @SuppressWarnings("deprecation")
     public static void main(String[] args) throws IOException, ParseException {
-        PropertiesReader.getInstance(args[0]);
+    	PropertiesReader.getInstance(args[0]);
         ShapefileDataStore shpLayer1 = new ShapefileDataStore(new File(filePathLayer1).toURL());
         ShapefileDataStore shpLayer2 = new ShapefileDataStore(new File(filePathLayer2).toURL());
         ShapefileDataStore shpLayer3 = new ShapefileDataStore(new File(filePathLayer3).toURL());

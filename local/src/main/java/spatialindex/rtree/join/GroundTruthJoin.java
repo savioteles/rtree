@@ -44,7 +44,7 @@ public class GroundTruthJoin {
         
         while(readerLayer1.hasNext()) {
             Feature feature = readerLayer1.next();
-            String layer1Id = feature.getIdentifier().getID().split("\\.")[1];
+            String layer1Id = String.valueOf((Long) feature.getProperty("id").getValue());
             Geometry geometry = getGeomOfFeature(feature, feature.getType());
             pool.execute(new IntersectsThread(layer1Id, geometry, numCacheGeometries, layer2Features, result));
         }
@@ -88,9 +88,10 @@ public class GroundTruthJoin {
     }
     
     public static void runJoin(String layer1Id, int numCacheGeometries, Geometry layer1Geom, List<Feature> layer2Features, Queue<JoinResultPair> result) throws IOException, ParseException {
-        List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getLayer1CachedPolygons(layer1Id, layer1Geom, numCacheGeometries);
-        for(Feature featureLayer2: layer2Features) {
-            String layer2Id = featureLayer2.getIdentifier().getID().split("\\.")[1];
+    	List<Geometry> desmataPolygons = ProbabilisticGeometriesService.getLayer1CachedPolygons(layer1Id, layer1Geom, numCacheGeometries);
+
+    	for(Feature featureLayer2: layer2Features) {
+            String layer2Id = String.valueOf((Long) featureLayer2.getProperty("id").getValue());
             Geometry layer2Geom = getGeomOfFeature(featureLayer2, featureLayer2.getType());
             List<Geometry> vegetaPolygons = ProbabilisticGeometriesService.getLayer2CachedPolygons(layer2Id, layer2Geom, numCacheGeometries);
             int total = desmataPolygons.size();

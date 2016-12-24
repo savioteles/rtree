@@ -1,6 +1,8 @@
 package utils;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -20,25 +22,30 @@ import org.geotools.data.simple.SimpleFeatureStore;
 import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.feature.Feature;
+import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.feature.type.FeatureType;
 
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 
 public class CreateGeometryShapeFile {
 
-    private static String filePathLayer1 = "/home/savio/Google Drive/Artigos/rtree/layers/desmatamento.shp";
-    private static String outputFilePathLayer1 = "/home/savio/Google Drive/Artigos/rtree/layers/desmatamento_final.shp";
+    private static final double ERROR_METERS = JtsFactories.metersToDegrees(5000);
+	private static String filePathLayer1 = "/home/savio/Welder/rtree/layers/desmatamento.shp";
+    private static String outputFilePathLayer1 = "/home/savio/Welder/rtree/layers/desmatamento_final.shp";
     
-    private static String filePathLayer2 = "/home/savio/Google Drive/Artigos/rtree/layers/vegetacao.shp";
-    private static String outputFilePathLayer2 = "/home/savio/Google Drive/Artigos/rtree/layers/vegetacao_final.shp";
+    private static String filePathLayer2 = "/home/savio/Welder/rtree/layers/vegetacao.shp";
+    private static String outputFilePathLayer2 = "/home/savio/Welder/rtree/layers/vegetacao_final.shp";
     
-    private static String filePathLayer3 = "/home/savio/Google Drive/Artigos/rtree/layers/queimada_pastagem.shp";
-    private static String outputilePathLayer3 = "/home/savio/Google Drive/Artigos/rtree/layers/queimada_pastagem_final.shp";
+    private static String filePathLayer3 = "/home/savio/Welder/rtree/layers/queimada_pastagem.shp";
+    private static String outputilePathLayer3 = "/home/savio/Welder/rtree/layers/queimada_pastagem_final.shp";
     
-    private static String fileCachePathLayer1 = "/home/savio/polygons/desmata_cache";
-    private static String fileCachePathLayer2 = "/home/savio/polygons/vegeta_cache";
-    private static String fileCachePathLayer3 = "/home/savio/polygons/queimada_cache";
+    private static String fileCachePathLayer1 = "/home/savio/Welder/polygons/desmata_cache";
+    private static String fileCachePathLayer2 = "/home/savio/Welder/polygons/vegeta_cache";
+    private static String fileCachePathLayer3 = "/home/savio/Welder/polygons/queimada_cache";
 
     @SuppressWarnings("deprecation")
     public static void main(String[] args) throws IOException, ParseException {
@@ -62,6 +69,26 @@ public class CreateGeometryShapeFile {
         return cachedIds;
     }
     
+    private static void verifyGeomError(Geometry geom, String fileCachePath) throws IOException, ParseException {
+    	BufferedReader br = new BufferedReader(new FileReader(fileCachePath));
+    	
+    	String line = null;
+    	while((line = br.readLine()) != null) {
+    		Geometry wkt = JtsFactories.readWKT(line);
+    		Coordinate[] geomCoordinates = geom.getCoordinates();
+    		Coordinate[] wktCoordinates = wkt.getCoordinates();
+    		
+    		for(int i =0; i < geomCoordinates.length; i++) {
+    			if (geomCoordinates[i].distance(wktCoordinates[i]) > ERROR_METERS) {
+    				System.err.println("ERRO na geometria " +geom +"\t" +wkt +"\t" +geomCoordinates[i] +"\t" +wktCoordinates[i] +"\t" +ERROR_METERS +"\t" +fileCachePath);
+    				System.exit(1);
+    			}
+    		}
+    	}
+    	
+    	br.close();
+    }
+    
     public static void writeGeometryShape (ShapefileDataStore shpLayer, String fileCacheDir, String outputFilePathLayer ) throws IOException, ParseException {
         Set<String> cachedGeometryIds = readCachedGeometryIds(fileCacheDir);
         
@@ -77,8 +104,12 @@ public class CreateGeometryShapeFile {
                 if (!cachedGeometryIds.contains(featureId))
                     continue;
                 
-                features.add(feature);
                 ft = (SimpleFeatureType) feature.getType();
+                Geometry geometry = getGeomOfFeature(feature, ft);
+                verifyGeomError(geometry, fileCacheDir +"/" +featureId);
+                
+                features.add(feature);
+                
             } catch (Exception e) {
                 System.err.println("Erro: " +feature.getIdentifier());
                 e.printStackTrace();
@@ -140,5 +171,17 @@ public class CreateGeometryShapeFile {
             System.out.println(typeName + " does not support read/write access");
             System.exit(1);
         }
+    }
+    
+    public static Geometry getGeomOfFeature(Feature f,
+            FeatureType featureType) throws ParseException {
+        for (Property prop : f.getProperties())
+            if (prop.getName().getURI().toLowerCase().intern()
+                    .equals(featureType.getGeometryDescriptor().getName()
+                            .toString())) {
+                return (Geometry) prop.getValue();
+            }
+
+        return null;
     }
 }
