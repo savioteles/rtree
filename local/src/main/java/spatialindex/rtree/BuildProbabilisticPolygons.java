@@ -122,9 +122,8 @@ public class BuildProbabilisticPolygons {
 					Geometry geom = JtsFactories
 							.changeGeometryPointsProbabilistic(originalGeom, errorInMeters);
 					if (!geom.isValid()) {
-						geom = originalGeom.convexHull();
-						geom = JtsFactories.changeGeometryPointsProbabilistic(
-								geom, errorInMeters);
+						bw.close();
+						throw new RuntimeException("Error to generate probabilistic geometry from " +originalGeom);
 					}
 
 					bw.write(geom.toString() + "\n");

@@ -35,6 +35,18 @@ public class ProbabilisticGeometriesService {
         return getProbabilisticGeometry(originalGeom, layer2Name, id, index);
     }
     
+    public static Geometry getCachedLayer1ProbabilisticGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
+    	int numCacheGeometries = PropertiesReader.getInstance().getNumCacheGeometries();
+    	List<Geometry> layer1CachedPolygons = getLayer1CachedPolygons(id, originalGeom, Math.max(numCacheGeometries, index + 1));
+    	return layer1CachedPolygons.get(index);
+    }
+    
+    public static Geometry getCachedLayer2ProbabilisticGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
+    	int numCacheGeometries = PropertiesReader.getInstance().getNumCacheGeometries();
+    	List<Geometry> layer2CachedPolygons = getLayer2CachedPolygons(id, originalGeom, Math.max(numCacheGeometries, index + 1));
+    	return layer2CachedPolygons.get(index);
+    }
+    
     private static Geometry getProbabilisticGeometry(Geometry originalGeom, String layer, String id, int index) throws IOException, ParseException {
         
         String cacheId = layer +id;

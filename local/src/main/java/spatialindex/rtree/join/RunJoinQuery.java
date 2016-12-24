@@ -26,7 +26,6 @@ import spatialindex.rtree.RTreeIRTree;
 import spatialindex.rtree.RTreeInsertion;
 import spatialindex.rtree.RTreeNode;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
-import utils.JtsFactories;
 import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
@@ -89,7 +88,7 @@ public class RunJoinQuery {
         System.out.println("Tempo Ground Truth: " +(System.currentTimeMillis() - time) +"\t" +joinRtrees.size());
 	}
 	
-	private static void runRSJoin() throws IOException, NodeIsLeafException{
+	private static void runRSJoin() throws IOException, NodeIsLeafException, ParseException{
         List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
         String distribution = PropertiesReader.getInstance().getDistribution().toString();
@@ -106,7 +105,7 @@ public class RunJoinQuery {
         		resultMap = new HashMap<String, Integer>();
 	            long time = System.currentTimeMillis();
 	            for(int it = 0; it < numJoinIteration; it++) {
-	                buildRtrees(false);
+	                buildRtrees(it);
 	                Queue<JoinResultPair> joinRtrees = new RSJoinQuery().joinRtrees(treeLayer1, treeLayer2);
 	                for(JoinResultPair result: joinRtrees) {
 	                    if(result == null)
@@ -140,8 +139,8 @@ public class RunJoinQuery {
         }
     }
 	
-	private static void runWelderJoin() throws IOException, NodeIsLeafException{
-	    buildRtrees(false);
+	private static void runWelderJoin() throws IOException, NodeIsLeafException, ParseException{
+	    buildRtrees(-1);
 	    double sd = PropertiesReader.getInstance().getSd();
 	    List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         List<Double> gammaValues = PropertiesReader.getInstance().getGammaValues();
@@ -176,20 +175,20 @@ public class RunJoinQuery {
         }
 	}
 	
-	private static void buildRtrees(boolean shiftPoint) throws IOException, NodeIsLeafException {
+	private static void buildRtrees(int index) throws IOException, NodeIsLeafException, ParseException {
 	    String layerName1 = properties.getLayer1Name();
         String filePathLayer1 = properties.getLayer1Path();
         int capacityLayer1 = properties.getLayer1Capacity();
-        treeLayer1 = buildRtree(layerName1, filePathLayer1, capacityLayer1, shiftPoint);
+        treeLayer1 = buildRtree(layerName1, filePathLayer1, capacityLayer1, true, index);
         
         String layerName2 = properties.getLayer2Name();
         String filePathLayer2 = properties.getLayer2Path();
         int capacityLayer2 = properties.getLayer2Capacity();
-        treeLayer2 = buildRtree(layerName2, filePathLayer2, capacityLayer2, shiftPoint);
+        treeLayer2 = buildRtree(layerName2, filePathLayer2, capacityLayer2, false, index);
 	}
 	
 	@SuppressWarnings("deprecation")
-    private static RTreeIRTree buildRtree(String layerName, String filePath, int capacity, boolean shiftPoint) throws IOException, NodeIsLeafException {
+    private static RTreeIRTree buildRtree(String layerName, String filePath, int capacity, boolean layer1, int index) throws IOException, NodeIsLeafException, ParseException {
 	    long time = System.currentTimeMillis();
         RTreeNode root = new RTreeNode(capacity, true, layerName +"_root");
         RTreeIRTree tree = new RStar(capacity, layerName, false);
@@ -199,9 +198,11 @@ public class RunJoinQuery {
         
         while(reader.hasNext()) {
             Feature feature = reader.next();
-       
-            Geometry geom = getGeomOfFeature(feature,
-                    featureType, shiftPoint);
+            String id = String.valueOf((Long) feature.getProperty("id").getValue());
+            
+            Geometry geom = getGeomOfFeature(feature, featureType);
+            if(index >= 0)
+            	geom = getCachedGeom(feature, featureType, id, layer1, index);
             RTreeInsertion.insertTree(root, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(feature.getIdentifier().getID().split("\\.")[1], geom)), null, tree);
         }
         
@@ -233,25 +234,33 @@ public class RunJoinQuery {
 	}
 	
 	private static Geometry getGeomOfFeature(Feature f,
-            FeatureType featureType, boolean shiftPoint) {
-		int errorInMeters = PropertiesReader.getInstance().getErrorInMeters();
+            FeatureType featureType) {
         for (Property prop : f.getProperties())
             if (prop.getName().getURI().toLowerCase().intern()
                     .equals(featureType.getGeometryDescriptor().getName()
                             .toString())) {
-                Geometry geometry = (Geometry) prop.getValue();
-                if(shiftPoint) {
-                    Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(geometry, errorInMeters);
-                    if (!probabilisticGeom.isValid()) {
-                        probabilisticGeom = geometry.convexHull();
-                        probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(
-                                probabilisticGeom, errorInMeters);
-                    }
-                    return probabilisticGeom;
-                }
-                return geometry;
+                return (Geometry) prop.getValue();
             }
 
+        return null;
+    }
+	
+	private static Geometry getCachedGeom(Feature f,
+            FeatureType featureType, String id, boolean layer1, int index) throws IOException, ParseException {
+        for (Property prop : f.getProperties()) {
+            if (prop.getName().getURI().toLowerCase().intern()
+                    .equals(featureType.getGeometryDescriptor().getName()
+                            .toString())) {
+                Geometry geometry = (Geometry) prop.getValue();
+                if(index >= 0) {
+                	if (layer1)
+                		return ProbabilisticGeometriesService.getCachedLayer1ProbabilisticGeometry(geometry, id, index);
+                	else 
+                		return ProbabilisticGeometriesService.getCachedLayer2ProbabilisticGeometry(geometry, id, index);
+                	
+                }
+            }
+        }
         return null;
     }
 
