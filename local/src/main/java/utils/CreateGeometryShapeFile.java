@@ -34,28 +34,30 @@ import com.vividsolutions.jts.io.ParseException;
 public class CreateGeometryShapeFile {
 
     private static final double ERROR_METERS = JtsFactories.metersToDegrees(5000);
-	private static String filePathLayer1 = "/home/savio/Welder/rtree/layers/desmatamento.shp";
-    private static String outputFilePathLayer1 = "/home/savio/Welder/rtree/layers/desmatamento_final.shp";
     
-    private static String filePathLayer2 = "/home/savio/Welder/rtree/layers/vegetacao.shp";
-    private static String outputFilePathLayer2 = "/home/savio/Welder/rtree/layers/vegetacao_final.shp";
+    private static String filePathDirLayer = "/home/savio/polygons/datasets";
     
-    private static String filePathLayer3 = "/home/savio/Welder/rtree/layers/queimada_pastagem.shp";
-    private static String outputilePathLayer3 = "/home/savio/Welder/rtree/layers/queimada_pastagem_final.shp";
+    private static String filePathLayer1 = "/home/savio/Google Drive/Artigos/rtree/layers/desmatamento.shp";
+    private static String filePathLayer2 = "/home/savio/Google Drive/Artigos/rtree/layers/vegetacao.shp";
+    private static String filePathLayer3 = "/home/savio/Google Drive/Artigos/rtree/layers/queimada_pastagem.shp";
     
-    private static String fileCachePathLayer1 = "/home/savio/Welder/polygons/desmata_cache";
-    private static String fileCachePathLayer2 = "/home/savio/Welder/polygons/vegeta_cache";
-    private static String fileCachePathLayer3 = "/home/savio/Welder/polygons/queimada_cache";
+    private static String fileNameLayer1 = "desmata";
+    private static String fileNameLayer2 = "vegeta";
+    private static String fileNameLayer3 = "queimada";
 
     @SuppressWarnings("deprecation")
     public static void main(String[] args) throws IOException, ParseException {
+        PropertiesReader.getInstance(args[0]);
+        String distribution = PropertiesReader.getInstance().getDistribution().name();
+        
         ShapefileDataStore shpLayer1 = new ShapefileDataStore(new File(filePathLayer1).toURL());
         ShapefileDataStore shpLayer2 = new ShapefileDataStore(new File(filePathLayer2).toURL());
         ShapefileDataStore shpLayer3 = new ShapefileDataStore(new File(filePathLayer3).toURL());
         
-        writeGeometryShape(shpLayer1, fileCachePathLayer1, outputFilePathLayer1);
-        writeGeometryShape(shpLayer2, fileCachePathLayer2, outputFilePathLayer2);
-        writeGeometryShape(shpLayer3, fileCachePathLayer3, outputilePathLayer3);
+        
+        writeGeometryShape(shpLayer1, filePathDirLayer +"/" +distribution +"/" +fileNameLayer1 +"_cache", filePathDirLayer +"/" +distribution +"/" +fileNameLayer1 +".shp");
+        writeGeometryShape(shpLayer2, filePathDirLayer +"/" +distribution +"/" +fileNameLayer2 +"_cache", filePathDirLayer +"/" +distribution +"/" +fileNameLayer2 +".shp");
+        writeGeometryShape(shpLayer3, filePathDirLayer +"/" +distribution +"/" +fileNameLayer3 +"_cache", filePathDirLayer +"/" +distribution +"/" +fileNameLayer3 +".shp");
         
     }
     
@@ -105,8 +107,8 @@ public class CreateGeometryShapeFile {
                     continue;
                 
                 ft = (SimpleFeatureType) feature.getType();
-                Geometry geometry = getGeomOfFeature(feature, ft);
-                verifyGeomError(geometry, fileCacheDir +"/" +featureId);
+//                Geometry geometry = getGeomOfFeature(feature, ft);
+//                verifyGeomError(geometry, fileCacheDir +"/" +featureId);
                 
                 features.add(feature);
                 

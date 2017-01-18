@@ -118,8 +118,6 @@ public class RunJoinQuery {
 	                	count++;
 	                	resultMap.put(result.toString(), count);
 	                }
-	                for(JoinResultPair r: joinRtrees)
-	                    System.out.println(r);
 	            }
 	            
 	           
@@ -203,7 +201,7 @@ public class RunJoinQuery {
             Geometry geom = getGeomOfFeature(feature, featureType);
             if(index >= 0)
             	geom = getCachedGeom(feature, featureType, id, layer1, index);
-            RTreeInsertion.insertTree(root, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(feature.getIdentifier().getID().split("\\.")[1], geom)), null, tree);
+            RTreeInsertion.insertTree(root, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(id, geom)), null, tree);
         }
         
         System.out.println("Time to construct layer " +layerName +": " +(System.currentTimeMillis() - time));
@@ -254,9 +252,9 @@ public class RunJoinQuery {
                 Geometry geometry = (Geometry) prop.getValue();
                 if(index >= 0) {
                 	if (layer1)
-                		return ProbabilisticGeometriesService.getCachedLayer1ProbabilisticGeometry(geometry, id, index);
+                		return ProbabilisticGeometriesService.getCachedLayer1ProbabilisticGeometry(geometry, id, index, index + 1);
                 	else 
-                		return ProbabilisticGeometriesService.getCachedLayer2ProbabilisticGeometry(geometry, id, index);
+                		return ProbabilisticGeometriesService.getCachedLayer2ProbabilisticGeometry(geometry, id, index, index + 1);
                 	
                 }
             }
