@@ -35,11 +35,11 @@ public class CreateGeometryShapeFile {
 
     private static final double ERROR_METERS = JtsFactories.metersToDegrees(5000);
     
-    private static String filePathDirLayer = "/home/savio/polygons/datasets";
+    private static String filePathDirLayer = "/home/welder/Documentos/datasets-error-1000";
     
-    private static String filePathLayer1 = "/home/savio/Google Drive/Artigos/rtree/layers/desmatamento.shp";
-    private static String filePathLayer2 = "/home/savio/Google Drive/Artigos/rtree/layers/vegetacao.shp";
-    private static String filePathLayer3 = "/home/savio/Google Drive/Artigos/rtree/layers/queimada_pastagem.shp";
+    private static String filePathLayer1 = "/home/welder/Documentos/projetos/rtree/layers/desmatamento.shp";
+    private static String filePathLayer2 = "/home/welder/Documentos/projetos/rtree/layers/vegetacao.shp";
+    private static String filePathLayer3 = "/home/welder/Documentos/projetos/rtree/layers/queimada_pastagem.shp";
     
     private static String fileNameLayer1 = "desmata";
     private static String fileNameLayer2 = "vegeta";

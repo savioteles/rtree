@@ -22,11 +22,11 @@ public class GenerateCachedPolygons {
 
     private static final int TRIES = 10;
     private static final int CACHED_GEOMS = 1000;
-    private static String filePathLayer1 = "/home/savio/Google Drive/Artigos/rtree/layers/desmatamento.shp";
-    private static String filePathLayer2 = "/home/savio/Google Drive/Artigos/rtree/layers/vegetacao.shp";
-    private static String filePathLayer3 = "/home/savio/Google Drive/Artigos/rtree/layers/queimada_pastagem.shp";
+    private static String filePathLayer1 = "/home/welder/Documentos/projetos/rtree/layers/desmatamento.shp";
+    private static String filePathLayer2 = "/home/welder/Documentos/projetos/rtree/layers/vegetacao.shp";
+    private static String filePathLayer3 = "/home/welder/Documentos/projetos/rtree/layers/queimada_pastagem.shp";
     
-    private static String fileCachePathLayer = "/home/savio/polygons/datasets";
+    private static String fileCachePathLayer = "/home/welder/Documentos/datasets-error-1000";
     
     private static String fileCacheNameLayer1 = "desmata_cache";
     private static String fileCacheNameLayer2 = "vegeta_cache";
