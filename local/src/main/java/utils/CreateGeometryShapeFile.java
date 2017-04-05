@@ -35,7 +35,7 @@ public class CreateGeometryShapeFile {
 
     private static final double ERROR_METERS = JtsFactories.metersToDegrees(5000);
     
-    private static String filePathDirLayer = "/home/welder/Documentos/datasets-error-1000";
+    private static String filePathDirLayer = "/home/welder/Documentos/datasets-error-200";
     
     private static String filePathLayer1 = "/home/welder/Documentos/projetos/rtree/layers/desmatamento.shp";
     private static String filePathLayer2 = "/home/welder/Documentos/projetos/rtree/layers/vegetacao.shp";

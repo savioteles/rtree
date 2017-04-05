@@ -484,10 +484,15 @@ public class WelderJoinQuery {
          */
         if (listEntries.isEmpty())
             result = compareNodeLeaf(listl, listr);
-        else if (listr.isEmpty())
+        else if (listr.isEmpty()) {
+        	System.err.println("NÚMERO DE NÍVEIS ERRADO DAS ÁRVORES. POR FAVOR VERIFIQUE A CACIDADE DAS ÁRVORES");
+        	System.exit(1);
             result = compareEntryDatasAndNode(listEntries, listl, false);
-        else
+        } else {
+        	System.err.println("NÚMERO DE NÍVEIS ERRADO DAS ÁRVORES. POR FAVOR VERIFIQUE A CACIDADE DAS ÁRVORES");
+        	System.exit(1);
             result = compareEntryDatasAndNode(listEntries, listr, true);
+        }
 
         return result;
     }
