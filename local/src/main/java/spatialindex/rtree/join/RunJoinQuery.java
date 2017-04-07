@@ -200,7 +200,7 @@ public class RunJoinQuery {
             
             Geometry geom = getGeomOfFeature(feature, featureType);
             if(index >= 0)
-            	geom = getCachedGeom(feature, featureType, id, layer1, index);
+            	geom = getCachedGeom(id, layer1);
             RTreeInsertion.insertTree(root, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(id, geom)), null, tree);
         }
         
@@ -243,23 +243,12 @@ public class RunJoinQuery {
         return null;
     }
 	
-	private static Geometry getCachedGeom(Feature f,
-            FeatureType featureType, String id, boolean layer1, int index) throws IOException, ParseException {
-        for (Property prop : f.getProperties()) {
-            if (prop.getName().getURI().toLowerCase().intern()
-                    .equals(featureType.getGeometryDescriptor().getName()
-                            .toString())) {
-                Geometry geometry = (Geometry) prop.getValue();
-                if(index >= 0) {
-                	if (layer1)
-                		return ProbabilisticGeometriesService.getCachedLayer1ProbabilisticGeometry(geometry, id, index, index + 1);
-                	else 
-                		return ProbabilisticGeometriesService.getCachedLayer2ProbabilisticGeometry(geometry, id, index, index + 1);
-                	
-                }
-            }
-        }
-        return null;
+	private static Geometry getCachedGeom(
+            String id, boolean layer1) throws IOException, ParseException {
+    	if (layer1)
+    		return ProbabilisticGeometriesService.getRandomCachedLayer1ProbabilisticGeometry(id);
+    	 
+    	return ProbabilisticGeometriesService.getRandomCachedLayer2ProbabilisticGeometry(id);
     }
 
 }

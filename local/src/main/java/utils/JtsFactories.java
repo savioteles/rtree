@@ -303,9 +303,9 @@ public class JtsFactories {
     private JtsFactories() {
     }
     
-    public static boolean intersects(Envelope env1, Envelope env2, double meters, double gamma, double sd) {
-    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, meters, gamma, sd);
-    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, meters, gamma, sd);
+    public static boolean intersects(Envelope env1, Envelope env2, double errorMetersLayer1, double errorMetersLayer2, double gamma, double sd) {
+    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, errorMetersLayer1, gamma, sd);
+    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, errorMetersLayer2, gamma, sd);
     	return envProb1.intersects(envProb2);
     }
     
@@ -351,6 +351,17 @@ public class JtsFactories {
     	Geometry geom1Prob = changeGeometryPointsProbabilistic(geom1, meters);
     	Geometry geom2Prob = changeGeometryPointsProbabilistic(geom2, meters);
     	return geom1Prob.intersects(geom2Prob);
+    }
+    
+    public static Geometry changeGeometryPointsProbabilistic(Geometry input, double errorInMeters, int maxTries) throws ParseException {
+        Geometry probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(input, errorInMeters);
+        int tries = 0;
+        while (!probabilisticGeom.isValid()) {
+            if (++tries >= maxTries)
+                throw new ParseException("Was not possible create a valid probabilistic geom");
+            probabilisticGeom = JtsFactories.changeGeometryPointsProbabilistic(input, errorInMeters);
+        }
+        return probabilisticGeom;
     }
     
     public static Geometry changeGeometryPointsProbabilistic(Geometry input, double meters) {

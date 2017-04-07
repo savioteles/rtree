@@ -40,6 +40,8 @@ public class PropertiesReader {
     private int numSystemThreads;
     
     private int errorInMeters;
+    private int errorInMetersLayer1;
+    private int errorInMetersLayer2;
     private double sd;
     
     private String layer1Name;
@@ -83,6 +85,8 @@ public class PropertiesReader {
         numSystemThreads = Integer.parseInt(pro.getProperty("num_threads_system"));
         
         errorInMeters = Integer.parseInt(pro.getProperty("error_in_meters"));
+        errorInMetersLayer1 = Integer.parseInt(pro.getProperty("error_in_meters_layer1"));
+        errorInMetersLayer2 = Integer.parseInt(pro.getProperty("error_in_meters_layer2"));
         
         String joinIterations = pro.getProperty("num_join_iteratios");
         for(String s: joinIterations.split(",")) {
@@ -140,6 +144,14 @@ public class PropertiesReader {
 
     public int getErrorInMeters() {
         return errorInMeters;
+    }
+    
+    public int getErrorInMetersLayer1() {
+        return errorInMetersLayer1;
+    }
+
+    public int getErrorInMetersLayer2() {
+        return errorInMetersLayer2;
     }
 
     public int getMaxCacheEntries() {

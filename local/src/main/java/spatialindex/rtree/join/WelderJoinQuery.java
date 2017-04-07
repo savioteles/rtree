@@ -28,7 +28,9 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class WelderJoinQuery {
 	
-	private static final double errorMeters = PropertiesReader.getInstance().getErrorInMeters();
+	private static final double errorMetersLayer1 = PropertiesReader.getInstance().getErrorInMetersLayer1();
+	private static final double errorMetersLayer2 = PropertiesReader.getInstance().getErrorInMetersLayer2();
+	
 	private int maxIterations;
 	private double gamma;
 	private double sd;
@@ -73,8 +75,8 @@ public class WelderJoinQuery {
                         while(true) {
                             for(int i = 0; i < numIterationsByStep;i++) {
                                 iterations++;
-                                Geometry nlPolygon = ProbabilisticGeometriesService.getCachedLayer1ProbabilisticGeometry(entryNL.getPolygon(), entryNL.getChild(), i, numIterationsByStep);
-                                Geometry nrPolygon = ProbabilisticGeometriesService.getCachedLayer2ProbabilisticGeometry(entryNR.getPolygon(), entryNR.getChild(), i, numIterationsByStep);
+                                Geometry nlPolygon = JtsFactories.changeGeometryPointsProbabilistic(entryNL.getPolygon(), errorMetersLayer1, 100);
+                                Geometry nrPolygon = JtsFactories.changeGeometryPointsProbabilistic(entryNR.getPolygon(), errorMetersLayer2, 100);
                                 if(nlPolygon.intersects(nrPolygon)){
                                     intersections++;
                                 }
@@ -145,7 +147,7 @@ public class WelderJoinQuery {
                         RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
                                 .getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMeters, gamma, sd)   
+                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMetersLayer1, errorMetersLayer2, gamma, sd)   
                                 ) {
                             RTreeIEntryDir aux = entryNL;
                             joinList.add(new JoinNodePar(
@@ -199,7 +201,7 @@ public class WelderJoinQuery {
                 RTreeIEntryDir entryNode = (RTreeIEntryDir) node
                         .getEntry(j);
 
-                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMeters, gamma, sd))
+                if(JtsFactories.intersects(entry.getBoundingBox(), entryNode.getBoundingBox(), errorMetersLayer1, errorMetersLayer2, gamma, sd))
                     result.add(new JoinEntryNodePar(entry,
                             rtree.getNode(entryNode.getChild())));
 
@@ -237,7 +239,7 @@ public class WelderJoinQuery {
                 RTreeIEntryData entryNode = (RTreeIEntryData) node.getEntry(j);
                 JoinAnalyzerObject keys = null;
                 if (JtsFactories.intersects(entry.getBoundingBox()
-                        ,entryNode.getBoundingBox(), errorMeters, gamma, sd)) {
+                        ,entryNode.getBoundingBox(), errorMetersLayer1, errorMetersLayer2, gamma, sd)) {
                     if (isLeftEmpty)
                         keys = JoinPredicateAnalyzer.getChildKey(
                                 entry.getCopyKeys(), entry.getChild(),
@@ -337,7 +339,7 @@ public class WelderJoinQuery {
                         RTreeIEntry entryNL = nl.getEntries().get(k);
 
                         if (JtsFactories.intersects(entryNL.getBoundingBox(),
-                                entryNR.getBoundingBox(), errorMeters, gamma, sd))
+                                entryNR.getBoundingBox(), errorMetersLayer1, errorMetersLayer2, gamma, sd))
                             result.add(
                                     new JoinEntryNodePar(entryNL,
                                             rtreeRight
