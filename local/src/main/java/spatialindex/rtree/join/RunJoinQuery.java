@@ -26,6 +26,7 @@ import spatialindex.rtree.RTreeIRTree;
 import spatialindex.rtree.RTreeInsertion;
 import spatialindex.rtree.RTreeNode;
 import spatialindex.rtree.join.RTreeJoinQuery.JoinResultPair;
+import utils.JtsFactories;
 import utils.PropertiesReader;
 
 import com.vividsolutions.jts.geom.Geometry;
@@ -200,7 +201,7 @@ public class RunJoinQuery {
             
             Geometry geom = getGeomOfFeature(feature, featureType);
             if(index >= 0)
-            	geom = getCachedGeom(id, layer1);
+            	geom = getRandomGeom(geom, id, layer1);
             RTreeInsertion.insertTree(root, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(id, geom)), null, tree);
         }
         
@@ -243,12 +244,12 @@ public class RunJoinQuery {
         return null;
     }
 	
-	private static Geometry getCachedGeom(
-            String id, boolean layer1) throws IOException, ParseException {
+	private static Geometry getRandomGeom(
+            Geometry geom, String id, boolean layer1) throws IOException, ParseException {
     	if (layer1)
-    		return ProbabilisticGeometriesService.getRandomCachedLayer1ProbabilisticGeometry(id);
+    		return JtsFactories.changeGeometryPointsProbabilistic(geom, PropertiesReader.getInstance().getErrorInMetersLayer1(), 100);
     	 
-    	return ProbabilisticGeometriesService.getRandomCachedLayer2ProbabilisticGeometry(id);
+    	return JtsFactories.changeGeometryPointsProbabilistic(geom, PropertiesReader.getInstance().getErrorInMetersLayer2(), 100);
     }
 
 }
