@@ -205,6 +205,11 @@ public class RunJoinQuery {
             RTreeInsertion.insertTree(root, new RTreeEntryData(geom.getEnvelopeInternal(), new IndexObject(id, geom)), null, tree);
         }
         
+        try {
+        	reader.close();
+        } catch (Exception e) {
+        }
+        
         System.out.println("Time to construct layer " +layerName +": " +(System.currentTimeMillis() - time));
         
         return tree;
