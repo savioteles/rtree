@@ -4,13 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 
 import org.geotools.util.LRULinkedHashMap;
 
@@ -33,8 +27,7 @@ public class ProbabilisticGeometriesService {
     
     private static LRULinkedHashMap<String, List<Geometry>> cache = new LRULinkedHashMap<String, List<Geometry>>(MAX_CACHE_SIZE, 0.75f, false, MAX_CACHE_SIZE);
     
-    private static final int NUM_CACHE_GEOMETRIES = PropertiesReader.getInstance().getNumCacheGeometries();
-    private static LRULinkedHashMap<String, Map<Integer, Geometry>> randomCache = new LRULinkedHashMap<String, Map<Integer, Geometry>>(MAX_CACHE_SIZE, 0.75f, false, MAX_CACHE_SIZE);
+    private static LRULinkedHashMap<String, List<Geometry>> randomCache = new LRULinkedHashMap<String, List<Geometry>>(MAX_CACHE_SIZE, 0.75f, false, MAX_CACHE_SIZE);
     
     public static Geometry getLayer1ProbabilisticGeometry(Geometry originalGeom, String id, int index) throws IOException, ParseException {
         return getProbabilisticGeometry(originalGeom, layer1Name, id, index);
@@ -141,68 +134,41 @@ public class ProbabilisticGeometriesService {
         return geometries;
     } 
     
-    public static Collection<Geometry> getRandomCachedPolygonsLayer1(String id, int size) throws IOException, ParseException {
-        return getRandomPolygons(layer1CacheFolder, layer1Name, id, size);
+    public static List<Geometry> getRandomCachedPolygons(Geometry originalGeom, String layer, String id, double errorInMeters, int size) throws IOException, ParseException {
+        return getRandomPolygons(originalGeom, layer, id, errorInMeters, size);
     }
     
-    public static Collection<Geometry> getRandomCachedPolygonsLayer2(String id, int size) throws IOException, ParseException {
-        return getRandomPolygons(layer2CacheFolder, layer2Name, id, size);
+    public static Geometry getRandomCachedProbabilisticGeometry(Geometry originalGeom, String layer, String id, int index, double errorInMeters) throws IOException, ParseException {
+        List<Geometry> randomCachedPolygons = getRandomCachedPolygons(originalGeom, layer, id, errorInMeters, index);
+        
+		Geometry geometry = randomCachedPolygons.get(index - 1);
+		return geometry;
     }
     
-    public static Geometry getRandomCachedLayer1ProbabilisticGeometry(String id) throws IOException, ParseException {
-        return getRandomCachedPolygonsLayer1(id, 1).iterator().next();
-    }
-    
-    public static Geometry getRandomCachedLayer2ProbabilisticGeometry(String id) throws IOException, ParseException {
-        return getRandomCachedPolygonsLayer2(id, 1).iterator().next();
-    }
-    
-    private static Collection<Geometry> getRandomPolygons(String folderPath, String layer, String id, int size) throws IOException, ParseException {
+    private static List<Geometry> getRandomPolygons(Geometry originalGeom, String layer, String id, double errorInMeters, int size) throws IOException, ParseException {
         String cacheId = layer +id;
         
-        Map<Integer, Geometry> result = new HashMap<Integer, Geometry>();
-        
-        Set<Integer> randomNumbers = new HashSet<Integer>();
-        Random random = new Random();
-        
-        while (randomNumbers.size() < size) 
-            randomNumbers.add(random.nextInt(NUM_CACHE_GEOMETRIES));
-        
-        Map<Integer, Geometry> geometries = null;
-        
-        geometries = randomCache.get(cacheId);
-        if(geometries != null) {
-            for (Integer randomNum: randomNumbers) {
-                Geometry geom = geometries.get(randomNum);
-                
-                if (geom != null) {
-                    result.put(randomNum, geom);
-                }
-            }
+        synchronized (cacheId.intern()) {   
+	        List<Geometry> geometries = randomCache.get(cacheId);
+	        
+	        if(geometries == null) {
+	        	geometries = new ArrayList<Geometry>();
+	        	randomCache.put(cacheId, geometries);
+	        } else {
+	        	if(geometries.size() >= size)
+	                return geometries;
+	        }
+	        
+	    	for(int i = 0; i < size; i++) {
+	    		Geometry probabilisticGeometry = JtsFactories.changeGeometryPointsProbabilistic(originalGeom, errorInMeters, 100);
+	    		geometries.add(probabilisticGeometry);
+	    		
+	    		if(geometries.size() >= size)
+	    			break;
+	    	}
+	    	
+	    	
+	    	return geometries;
         }
-        
-        if(geometries == null) {
-            geometries = new HashMap<Integer, Geometry>();
-            randomCache.put(cacheId, geometries);
-        }
-        
-        BufferedReader reader = new BufferedReader(new FileReader(folderPath +"/"+id));
-        for(int i = 0; i < NUM_CACHE_GEOMETRIES; i++) {
-            if (result.size() == size)
-                break;
-            
-            if (!randomNumbers.contains(i) || result.containsKey(i)) {
-                reader.readLine();
-                continue;
-            }
-            
-            String line = reader.readLine();
-            Geometry geom = JtsFactories.readWKT(line);
-            geometries.put(i, geom);
-            result.put(i, geom);
-        }
-        reader.close();
-        
-        return result.values();
     }
 }

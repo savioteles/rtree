@@ -30,6 +30,8 @@ public class WelderJoinQuery {
 	
 	private static final double errorMetersLayer1 = PropertiesReader.getInstance().getErrorInMetersLayer1();
 	private static final double errorMetersLayer2 = PropertiesReader.getInstance().getErrorInMetersLayer2();
+	private static final String layerName1 = PropertiesReader.getInstance().getLayer1Name();
+	private static final String layerName2 = PropertiesReader.getInstance().getLayer2Name();
 	
 	private int maxIterations;
 	private double gamma;
@@ -75,8 +77,8 @@ public class WelderJoinQuery {
                         while(true) {
                             for(int i = 0; i < numIterationsByStep;i++) {
                                 iterations++;
-                                Geometry nlPolygon = JtsFactories.changeGeometryPointsProbabilistic(entryNL.getPolygon(), errorMetersLayer1, 100);
-                                Geometry nrPolygon = JtsFactories.changeGeometryPointsProbabilistic(entryNR.getPolygon(), errorMetersLayer2, 100);
+                                Geometry nlPolygon = ProbabilisticGeometriesService.getRandomCachedProbabilisticGeometry(entryNL.getPolygon(), layerName1, entryNL.getChild(), iterations, errorMetersLayer1);
+                                Geometry nrPolygon = ProbabilisticGeometriesService.getRandomCachedProbabilisticGeometry(entryNR.getPolygon(), layerName2, entryNR.getChild(), iterations, errorMetersLayer2);
                                 if(nlPolygon.intersects(nrPolygon)){
                                     intersections++;
                                 }
