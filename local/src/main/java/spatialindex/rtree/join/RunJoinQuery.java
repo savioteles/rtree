@@ -141,6 +141,7 @@ public class RunJoinQuery {
 	private static void runWelderJoin() throws IOException, NodeIsLeafException, ParseException{
 	    buildRtrees(-1);
 	    double sd = PropertiesReader.getInstance().getSd();
+	    double p = PropertiesReader.getInstance().getP();
 	    List<Integer> numJoinIterations = PropertiesReader.getInstance().getNumJoinIterations();
         List<Double> gammaValues = PropertiesReader.getInstance().getGammaValues();
 	    int numJoinExecutions = PropertiesReader.getInstance().getNumJoinExecutions();
@@ -156,7 +157,7 @@ public class RunJoinQuery {
                 Queue<JoinResultPair> joinRtrees = null;
                 for(int i = 0; i < numJoinExecutions; i++) {
                     long time = System.currentTimeMillis();
-                    joinRtrees = new WelderJoinQuery(numJoinIteration, gammaValue, sd).joinRtrees(treeLayer1, treeLayer2);
+                    joinRtrees = new WelderJoinQuery(numJoinIteration, gammaValue, sd, p).joinRtrees(treeLayer1, treeLayer2);
                     time = System.currentTimeMillis() - time;
                     totalTime += time;
                     bw.write("Join " +i +": " +time +"\n");

@@ -35,14 +35,16 @@ public class WelderJoinQuery {
 	
 	private int maxIterations;
 	private double gamma;
+	private double p;
 	private double sd;
 	private static int numIterationsByStep = PropertiesReader.getInstance().getNumJoinIterationsByStep();
 	private static Map<Integer, Double> cacheTc = new HashMap<Integer, Double>();
 
-    public WelderJoinQuery(int maxIterations, double gamma, double sd) {
+    public WelderJoinQuery(int maxIterations, double gamma, double sd, double p) {
         this.maxIterations = maxIterations;
         this.gamma = gamma;
         this.sd = sd;
+        this.p = p;
     }
 
     private class JoinThread implements Runnable {
@@ -58,6 +60,9 @@ public class WelderJoinQuery {
             this.result = result;
         }
 
+        /**
+         * Aqui ele faz a intersecção das Geometrias
+         */
         @Override
         public void run() {
             try {
@@ -149,7 +154,10 @@ public class WelderJoinQuery {
                         RTreeIEntryDir entryNL = (RTreeIEntryDir) nl
                                 .getEntries().get(k);
 
-                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMetersLayer1, errorMetersLayer2, gamma, sd)   
+                        /*
+                         * Intersecção dos retângulos de confiança
+                         */
+                        if (JtsFactories.intersects(entryNL.getBoundingBox(), entryNR.getBoundingBox(), errorMetersLayer1, errorMetersLayer2, p, sd)   
                                 ) {
                             RTreeIEntryDir aux = entryNL;
                             joinList.add(new JoinNodePar(

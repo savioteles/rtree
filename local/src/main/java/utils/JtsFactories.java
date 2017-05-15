@@ -303,14 +303,14 @@ public class JtsFactories {
     private JtsFactories() {
     }
     
-    public static boolean intersects(Envelope env1, Envelope env2, double errorMetersLayer1, double errorMetersLayer2, double gamma, double sd) {
-    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, errorMetersLayer1, gamma, sd);
-    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, errorMetersLayer2, gamma, sd);
+    public static boolean intersects(Envelope env1, Envelope env2, double errorMetersLayer1, double errorMetersLayer2, double p, double sd) {
+    	Envelope envProb1 = changeEnvelopePointsProbabilistic(env1, errorMetersLayer1, p, sd);
+    	Envelope envProb2 = changeEnvelopePointsProbabilistic(env2, errorMetersLayer2, p, sd);
     	return envProb1.intersects(envProb2);
     }
     
-    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv, double meters, double gamma, double sd){
-    	double d = shiftEnvelopeDistance(meters, gamma, sd);
+    private static Envelope changeEnvelopePointsProbabilistic(Envelope inputEnv, double meters, double p, double sd){
+    	double d = shiftEnvelopeDistance(meters, p, sd);
     	double xMin = inputEnv.getMinX() - d;
     	double xMax = inputEnv.getMaxX() + d;
     	double yMin = inputEnv.getMinY() - d ;
@@ -320,24 +320,24 @@ public class JtsFactories {
     }
     
     private static Map<String, Double> shiftCache = new HashMap<String, Double>();
-    private static double shiftEnvelopeDistance(double mean, double gamma, double sd) {
+    private static double shiftEnvelopeDistance(double mean, double p, double sd) {
     	Distribution distributionType = PropertiesReader.getInstance().getDistribution();
     	
-    	String key = distributionType.toString() +";" +mean +";" +gamma +";" +sd;
+    	String key = distributionType.toString() +";" +mean +";" +p +";" +sd;
     	Double shift = shiftCache.get(key);
     	if(shift != null) 
     	    return shift;
     	    
         switch (distributionType) {
         case normal:
-            shift = metersToDegrees(mean) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+            shift = metersToDegrees(mean) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - p)));
             break;
         case exponencial:
-            shift = metersToDegrees(mean) + metersToDegrees(mean) * (Math.sqrt(1 / (1 - gamma)));
+            shift = metersToDegrees(mean) + metersToDegrees(mean) * (Math.sqrt(1 / (1 - p)));
         	break;
         case chisquared:
             mean++;
-            shift = metersToDegrees(mean) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - gamma)));
+            shift = metersToDegrees(mean) + metersToDegrees(sd) * (Math.sqrt(1 / (1 - p)));
             break;
         default:
             return 0;
